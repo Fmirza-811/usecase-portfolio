@@ -139,7 +139,13 @@ const priorityStyles: Record<string, string> = {
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-const hasSupabaseEnv = Boolean(supabaseUrl && supabaseAnonKey);
+const hasSupabaseEnv =
+  typeof supabaseUrl === "string" &&
+  supabaseUrl.length > 0 &&
+  typeof supabaseAnonKey === "string" &&
+  supabaseAnonKey.length > 0;
+  console.log("URL:", supabaseUrl);
+console.log("KEY:", supabaseAnonKey);
 const supabase = hasSupabaseEnv ? createClient(supabaseUrl!, supabaseAnonKey!) : null;
 
 function cn(...classes: Array<string | false | null | undefined>): string {
