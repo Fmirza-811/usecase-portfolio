@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Plus, Search, Filter, LayoutGrid, Table2, CalendarDays, Building2, User2,
   Sparkles, Target, ChevronRight, X, Pencil, Briefcase, Clock3, Shield, Eye,
-  RefreshCw, Trash2, type LucideIcon,
+  RefreshCw, Trash2, BarChart2, type LucideIcon,
 } from 'lucide-react';
 
 const EDITOR_SECRET = 'AIlabs2026';
@@ -26,6 +26,8 @@ type UseCaseItem = {
   impact: string;
   notes: string;
   updated: string;
+  start_date: string;
+  end_date: string;
 };
 
 const demoUseCases: UseCaseItem[] = [
@@ -34,28 +36,32 @@ const demoUseCases: UseCaseItem[] = [
     status: 'In Progress', horizon: 'Current Quarter', priority: 'High',
     description: 'Automates first-draft RFP responses using approved content blocks, reusable answer libraries, and guided prompt workflows.',
     impact: 'Reduce proposal preparation time and improve consistency in responses.',
-    notes: 'Needs stronger export and library management workflow.', updated: '2026-04-09',
+    notes: 'Needs stronger export and library management workflow.',
+    updated: '2026-04-09', start_date: '2026-03-01', end_date: '2026-06-30',
   },
   {
     id: 'UC-002', name: 'Transcend Chatbot', department: 'Product', stakeholder: 'Fatima Mirza',
     status: 'In Discovery', horizon: 'Current Quarter', priority: 'High',
     description: 'Client-facing helpbot for Transcend Finance users to answer system questions and reduce repetitive support traffic.',
     impact: 'Lower support volume and improve self-service for clients.',
-    notes: 'Need to define scope boundaries and escalation logic.', updated: '2026-04-08',
+    notes: 'Need to define scope boundaries and escalation logic.',
+    updated: '2026-04-08', start_date: '2026-04-01', end_date: '2026-07-31',
   },
   {
     id: 'UC-003', name: 'AI BI Insights for Wholesale Finance', department: 'Strategy', stakeholder: 'Fatima Mirza',
     status: 'Planned', horizon: 'Future Pipeline', priority: 'Medium',
     description: 'Executive dashboard layer for wholesale finance with natural-language insight generation and strategic KPI summaries.',
     impact: 'Help executives answer business questions quickly without depending on analysts.',
-    notes: 'Best positioned as a strategic differentiator.', updated: '2026-04-06',
+    notes: 'Best positioned as a strategic differentiator.',
+    updated: '2026-04-06', start_date: '2026-07-01', end_date: '2026-12-31',
   },
   {
     id: 'UC-004', name: 'Dealer Product Recommendation Engine', department: 'Sales', stakeholder: 'Fatima Mirza',
     status: 'Idea', horizon: 'Future Pipeline', priority: 'Medium',
     description: 'Recommends relevant finance products, contract types, and add-ons to improve dealer-side sales conversations.',
     impact: 'Drive smarter assisted selling with limited first-interaction customer data.',
-    notes: 'Should stay recommendation-first, not advisory-heavy.', updated: '2026-04-04',
+    notes: 'Should stay recommendation-first, not advisory-heavy.',
+    updated: '2026-04-04', start_date: '2026-09-01', end_date: '2027-03-31',
   },
 ];
 
@@ -71,6 +77,16 @@ const statusStyles: Record<string, string> = {
   Blocked: 'bg-rose-100 text-rose-700 border-rose-200',
   Live: 'bg-emerald-100 text-emerald-700 border-emerald-200',
   'On Hold': 'bg-zinc-100 text-zinc-700 border-zinc-200',
+};
+
+const statusBarColors: Record<string, string> = {
+  Idea: 'bg-slate-400',
+  'In Discovery': 'bg-blue-400',
+  Planned: 'bg-violet-400',
+  'In Progress': 'bg-amber-400',
+  Blocked: 'bg-rose-400',
+  Live: 'bg-emerald-400',
+  'On Hold': 'bg-zinc-400',
 };
 
 const priorityStyles: Record<string, string> = {
@@ -135,7 +151,7 @@ function Select({ className, children, ...props }: { className?: string; childre
 }
 
 function Badge({ className, children }: SurfaceProps) {
-  return <span className={cn('inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium', className)}>{children}</span>;
+  return <span className={cn('inline-flex items-center whitespace-nowrap rounded-full border px-3 py-1 text-xs font-medium', className)}>{children}</span>;
 }
 
 function StatCard({ title, value, icon: Icon, subtitle }: { title: string; value: number; icon: LucideIcon; subtitle: string }) {
@@ -201,10 +217,147 @@ function Drawer({ open, onClose, children }: { open: boolean; onClose: () => voi
   );
 }
 
+// ── Gantt Chart ──────────────────────────────────────────────────────────────
+
+function GanttChart({ items }: { items: UseCaseItem[] }) {
+  const validItems = items.filter((i) => i.start_date && i.end_date);
+  if (validItems.length === 0) return (
+    <Card className="rounded-[28px]">
+      <CardContent className="p-8 text-center text-slate-500">No timeline data available. Add start and end dates to use cases.</CardContent>
+    </Card>
+  );
+
+  const allDates = validItems.flatMap((i) => [new Date(i.start_date), new Date(i.end_date)]);
+  const minDate = new Date(Math.min(...allDates.map((d) => d.getTime())));
+  const maxDate = new Date(Math.max(...allDates.map((d) => d.getTime())));
+
+  // Round to month boundaries
+  minDate.setDate(1);
+  maxDate.setMonth(maxDate.getMonth() + 1);
+  maxDate.setDate(0);
+
+  const totalDays = (maxDate.getTime() - minDate.getTime()) / (1000 * 60 * 60 * 24);
+
+  // Build month labels
+  const months: { label: string; left: number; width: number }[] = [];
+  const cursor = new Date(minDate);
+  while (cursor <= maxDate) {
+    const monthStart = new Date(cursor.getFullYear(), cursor.getMonth(), 1);
+    const monthEnd = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 0);
+    const left = Math.max(0, (monthStart.getTime() - minDate.getTime()) / (1000 * 60 * 60 * 24) / totalDays * 100);
+    const end = Math.min(100, (monthEnd.getTime() - minDate.getTime()) / (1000 * 60 * 60 * 24) / totalDays * 100);
+    months.push({
+      label: cursor.toLocaleDateString('en-GB', { month: 'short', year: '2-digit' }),
+      left,
+      width: end - left,
+    });
+    cursor.setMonth(cursor.getMonth() + 1);
+  }
+
+  // Today marker
+  const today = new Date();
+  const todayPct = Math.min(100, Math.max(0, (today.getTime() - minDate.getTime()) / (1000 * 60 * 60 * 24) / totalDays * 100));
+  const showToday = today >= minDate && today <= maxDate;
+
+  return (
+    <Card className="overflow-hidden rounded-[28px]">
+      <div className="border-b border-slate-100 px-6 py-4">
+        <div className="flex items-center gap-2">
+          <BarChart2 className="h-5 w-5 text-slate-500" />
+          <h3 className="font-semibold text-slate-900">Timeline</h3>
+        </div>
+      </div>
+      <div className="p-6">
+        <div className="overflow-x-auto">
+          <div style={{ minWidth: '600px' }}>
+            {/* Month headers */}
+            <div className="relative mb-3 ml-48 h-6">
+              {months.map((m, i) => (
+                <div
+                  key={i}
+                  className="absolute text-xs text-slate-400"
+                  style={{ left: `${m.left}%`, width: `${m.width}%` }}
+                >
+                  {m.label}
+                </div>
+              ))}
+            </div>
+
+            {/* Grid + bars */}
+            <div className="relative ml-48 space-y-3">
+              {/* Month grid lines */}
+              {months.map((m, i) => (
+                <div
+                  key={i}
+                  className="pointer-events-none absolute top-0 bottom-0 border-l border-slate-100"
+                  style={{ left: `${m.left}%` }}
+                />
+              ))}
+
+              {/* Today line */}
+              {showToday && (
+                <div
+                  className="pointer-events-none absolute top-0 bottom-0 z-10 border-l-2 border-indigo-400"
+                  style={{ left: `${todayPct}%` }}
+                >
+                  <span className="absolute -top-6 -translate-x-1/2 rounded bg-indigo-400 px-1.5 py-0.5 text-xs text-white">Today</span>
+                </div>
+              )}
+
+              {validItems.map((item) => {
+                const start = new Date(item.start_date);
+                const end = new Date(item.end_date);
+                const leftPct = (start.getTime() - minDate.getTime()) / (1000 * 60 * 60 * 24) / totalDays * 100;
+                const widthPct = (end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24) / totalDays * 100;
+                const barColor = statusBarColors[item.status] ?? 'bg-slate-400';
+
+                return (
+                  <div key={item.id} className="flex items-center gap-0">
+                    {/* Label — sits to the LEFT of the ml-48 container, so we use negative offset */}
+                    <div className="absolute -ml-48 w-44 truncate pr-3 text-right text-sm text-slate-700" title={item.name}>
+                      {item.name}
+                    </div>
+                    {/* Bar row */}
+                    <div className="relative h-8 w-full rounded-xl bg-slate-50">
+                      <div
+                        className={cn('absolute h-full rounded-xl opacity-90 transition-all', barColor)}
+                        style={{ left: `${Math.max(0, leftPct)}%`, width: `${Math.min(100 - Math.max(0, leftPct), widthPct)}%` }}
+                        title={`${item.start_date} → ${item.end_date}`}
+                      >
+                        <span className="absolute inset-0 flex items-center px-3 text-xs font-medium text-white truncate">
+                          {item.status}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Legend */}
+            <div className="mt-6 flex flex-wrap gap-3">
+              {Object.entries(statusBarColors).map(([status, color]) => (
+                <div key={status} className="flex items-center gap-1.5 text-xs text-slate-500">
+                  <div className={cn('h-3 w-3 rounded-full', color)} />
+                  {status}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+// ── Form ─────────────────────────────────────────────────────────────────────
+
 const emptyForm: UseCaseItem = {
   id: '', name: '', department: '', stakeholder: '',
   status: 'Idea', horizon: 'Future Pipeline', priority: 'Medium',
-  description: '', impact: '', notes: '', updated: new Date().toISOString().slice(0, 10),
+  description: '', impact: '', notes: '',
+  updated: new Date().toISOString().slice(0, 10),
+  start_date: '', end_date: '',
 };
 
 function UseCaseForm({ open, onOpenChange, onSave, editingItem }: {
@@ -267,6 +420,14 @@ function UseCaseForm({ open, onOpenChange, onSave, editingItem }: {
             {horizonOptions.map((o) => <option key={o} value={o}>{o}</option>)}
           </Select>
         </div>
+        <div>
+          <label className="mb-2 block text-sm font-medium text-slate-700">Start Date</label>
+          <Input type="date" value={form.start_date} onChange={(e) => update('start_date', e.target.value)} />
+        </div>
+        <div>
+          <label className="mb-2 block text-sm font-medium text-slate-700">End Date</label>
+          <Input type="date" value={form.end_date} onChange={(e) => update('end_date', e.target.value)} />
+        </div>
         <div className="md:col-span-2">
           <label className="mb-2 block text-sm font-medium text-slate-700">Description</label>
           <Textarea value={form.description} onChange={(e) => update('description', e.target.value)} className="min-h-[110px]" />
@@ -283,6 +444,8 @@ function UseCaseForm({ open, onOpenChange, onSave, editingItem }: {
     </Modal>
   );
 }
+
+// ── Main App ─────────────────────────────────────────────────────────────────
 
 export default function UseCasePortfolioApp() {
   const [useCases, setUseCases] = useState<UseCaseItem[]>(demoUseCases);
@@ -314,13 +477,8 @@ export default function UseCasePortfolioApp() {
       const res = await fetch('/api/usecases');
       if (!res.ok) throw new Error('Failed');
       const data: UseCaseItem[] = await res.json();
-      if (data.length > 0) {
-        setUseCases(data);
-        setUsingDemo(false);
-      } else {
-        setUseCases(demoUseCases);
-        setUsingDemo(true);
-      }
+      if (data.length > 0) { setUseCases(data); setUsingDemo(false); }
+      else { setUseCases(demoUseCases); setUsingDemo(true); }
     } catch {
       setUseCases(demoUseCases);
       setUsingDemo(true);
@@ -330,41 +488,30 @@ export default function UseCasePortfolioApp() {
   }, []);
 
   const saveItem = async (item: UseCaseItem) => {
-    setSaving(true);
-    setNotice('');
+    setSaving(true); setNotice('');
     try {
       const res = await fetch('/api/usecases', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(item),
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(item),
       });
       if (!res.ok) throw new Error('Failed');
       await loadData();
       setNotice('Saved successfully.');
-    } catch {
-      setNotice('Could not save. Please try again.');
-    }
-    setSaving(false);
-    setEditingItem(null);
+    } catch { setNotice('Could not save. Please try again.'); }
+    setSaving(false); setEditingItem(null);
   };
 
   const deleteItem = async (id: string) => {
     if (!confirm('Are you sure you want to delete this use case?')) return;
-    setSaving(true);
-    setNotice('');
+    setSaving(true); setNotice('');
     try {
       const res = await fetch('/api/usecases', {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id }),
+        method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }),
       });
       if (!res.ok) throw new Error('Failed');
       setActiveItem(null);
       await loadData();
       setNotice('Deleted successfully.');
-    } catch {
-      setNotice('Could not delete. Please try again.');
-    }
+    } catch { setNotice('Could not delete. Please try again.'); }
     setSaving(false);
   };
 
@@ -404,7 +551,7 @@ export default function UseCasePortfolioApp() {
             <div className="flex flex-col items-start gap-3 md:items-end">
               <AccessBadge role={userRole} />
               {isEditor && (
-                <Button className="bg-white text-slate-900 hover:bg-slate-100"
+                <<<Button className="border border-white/30 bg-white text-slate-900 hover:bg-slate-100"
                   onClick={() => { setEditingItem(null); setFormOpen(true); }} type="button">
                   <Plus className="h-4 w-4" /> Add use case
                 </Button>
@@ -504,12 +651,12 @@ export default function UseCasePortfolioApp() {
                               <div className="mt-1 text-xs text-slate-500">{item.id}</div>
                             </button>
                           </td>
-                          <td className="px-6 py-4 text-sm text-slate-700">{item.department}</td>
-                          <td className="px-6 py-4 text-sm text-slate-700">{item.stakeholder}</td>
+                          <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-700">{item.department}</td>
+                          <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-700">{item.stakeholder}</td>
                           <td className="px-6 py-4"><Badge className={cn('border', statusStyles[item.status])}>{item.status}</Badge></td>
                           <td className="px-6 py-4"><Badge className={cn('border', priorityStyles[item.priority])}>{item.priority}</Badge></td>
-                          <td className="px-6 py-4 text-sm text-slate-700">{item.horizon}</td>
-                          <td className="px-6 py-4 text-sm text-slate-500">{item.updated}</td>
+                          <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-700">{item.horizon}</td>
+                          <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-500">{item.updated}</td>
                           <td className="px-6 py-4 text-right">
                             <div className="flex justify-end gap-2">
                               <Button variant="outline" onClick={() => setActiveItem(item)} type="button">View</Button>
@@ -578,6 +725,9 @@ export default function UseCasePortfolioApp() {
           )}
         </AnimatePresence>
 
+        {/* Gantt Chart */}
+        <GanttChart items={filtered} />
+
         {/* Form modal */}
         <UseCaseForm open={formOpen} onOpenChange={setFormOpen} onSave={(item) => void saveItem(item)} editingItem={editingItem} />
 
@@ -614,6 +764,22 @@ export default function UseCasePortfolioApp() {
                       <p className="mt-2 text-base font-medium text-slate-900">{activeItem.stakeholder}</p>
                     </CardContent>
                   </Card>
+                  {activeItem.start_date && (
+                    <Card className="border border-slate-200 shadow-none">
+                      <CardContent className="p-5">
+                        <p className="text-sm text-slate-500">Start date</p>
+                        <p className="mt-2 text-base font-medium text-slate-900">{activeItem.start_date}</p>
+                      </CardContent>
+                    </Card>
+                  )}
+                  {activeItem.end_date && (
+                    <Card className="border border-slate-200 shadow-none">
+                      <CardContent className="p-5">
+                        <p className="text-sm text-slate-500">End date</p>
+                        <p className="mt-2 text-base font-medium text-slate-900">{activeItem.end_date}</p>
+                      </CardContent>
+                    </Card>
+                  )}
                 </div>
                 <Card className="border border-slate-200 shadow-none">
                   <CardHeader><CardTitle>Description</CardTitle></CardHeader>
