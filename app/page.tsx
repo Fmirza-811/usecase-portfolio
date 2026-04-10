@@ -25,14 +25,12 @@ import {
   Pencil,
   Briefcase,
   Clock3,
-  LogIn,
-  LogOut,
   Shield,
   Eye,
   RefreshCw,
   type LucideIcon,
 } from 'lucide-react';
-import { createClient, type Session } from '@supabase/supabase-js';
+import { createClient } from '@supabase/supabase-js';
 
 type UserRole = 'viewer' | 'editor' | 'admin' | null;
 type ViewMode = 'table' | 'cards';
@@ -116,6 +114,8 @@ const demoUseCases: UseCaseItem[] = [
   },
 ];
 
+const EDITOR_SECRET = 'AIlabs2026';
+
 const statusOptions = ['Idea', 'In Discovery', 'Planned', 'In Progress', 'Blocked', 'Live', 'On Hold'] as const;
 const priorityOptions = ['Low', 'Medium', 'High', 'Critical'] as const;
 const horizonOptions = ['Current Quarter', 'Next Quarter', 'Future Pipeline'] as const;
@@ -136,11 +136,11 @@ const priorityStyles: Record<string, string> = {
   High: 'bg-orange-100 text-orange-700 border-orange-200',
   Critical: 'bg-rose-100 text-rose-700 border-rose-200',
 };
+
 const supabaseUrl = "https://cflgpbcqyxnzbxzlvfuk.supabase.co";
 const supabaseAnonKey = "sb_publishable_lqYENJ8RnyBlYhCKSFy3kg_aa7PeiOa";
 
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
-const hasSupabaseEnv = true;
 
 function cn(...classes: Array<string | false | null | undefined>): string {
   return classes.filter(Boolean).join(' ');
@@ -338,7 +338,7 @@ function AccessBadge({ role }: { role: UserRole }) {
       )}
     >
       {isEditor ? <Shield className="mr-1 h-3.5 w-3.5" /> : <Eye className="mr-1 h-3.5 w-3.5" />}
-      {role ? `${role.charAt(0).toUpperCase()}${role.slice(1)} access` : 'Demo mode'}
+      {isEditor ? 'Editor access' : 'Viewer access'}
     </Badge>
   );
 }
@@ -481,84 +481,38 @@ export default function UseCasePortfolioApp() {
   const [editingItem, setEditingItem] = useState<UseCaseItem | null>(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [session, setSession] = useState<Session | null>(null);
-  const [userRole, setUserRole] = useState<UserRole>(null);
-  const [emailInput, setEmailInput] = useState('');
+  const [userRole, setUserRole] = useState<UserRole>('viewer');
   const [notice, setNotice] = useState('');
 
   const isEditor = userRole === 'editor' || userRole === 'admin';
 
-  const departments = useMemo(() => ['All', ...Array.from(new Set(useCases.map((item) => item.department).filter(Boolean)))], [useCases]);
-
-useEffect(() => {
-  if (!supabase) return;
-
-  let mounted = true;
-
-  const loadSession = async () => {
-    const { data, error } = await supabase.auth.getSession();
-
-    if (!mounted) return;
-
-    if (error) {
-      console.error("Session error:", error.message);
-      setSession(null);
-      return;
+  // Check URL for editor secret on load
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const secret = params.get('editor');
+    if (secret === EDITOR_SECRET) {
+      setUserRole('editor');
+    } else {
+      setUserRole('viewer');
     }
-
-    setSession(data.session ?? null);
-  };
-
-  void loadSession();
-
-  const {
-    data: { subscription },
-  } = supabase.auth.onAuthStateChange((_event, currentSession) => {
-    if (!mounted) return;
-    setSession(currentSession ?? null);
-  });
-
-  return () => {
-    mounted = false;
-    subscription.unsubscribe();
-  };
-}, []);
-
-useEffect(() => {
-  if (!supabase) return;
-
-  if (!session?.user) {
-    setUserRole(null);
-    return;
-  }
-
-  void loadData();
-}, [session]);
+    void loadData();
+  }, []);
 
   async function loadData(): Promise<void> {
-    if (!supabase || !session?.user) return;
-
     setLoading(true);
     setNotice('');
 
-    const [{ data: roleRow, error: roleError }, { data: useCaseRows, error: useCaseError }] = await Promise.all([
-      supabase.from('user_roles').select('role').eq('user_id', session.user.id).maybeSingle(),
-      supabase.from('use_cases').select('*').order('updated', { ascending: false }),
-    ]);
-
-    if (roleError) {
-      setNotice('Signed in, but role lookup failed. Check RLS or user_roles setup.');
-    } else {
-      const fetchedRole = (roleRow?.role as UserRole) ?? 'viewer';
-      setUserRole(fetchedRole);
-    }
+    const { data: useCaseRows, error: useCaseError } = await supabase
+      .from('use_cases')
+      .select('*')
+      .order('updated', { ascending: false });
 
     if (useCaseError) {
       setNotice('Could not load live data. Showing demo content until Supabase is fully configured.');
       setUseCases(demoUseCases);
     } else {
       const rows = (useCaseRows as UseCaseItem[] | null) ?? [];
-      setUseCases(rows);
+      setUseCases(rows.length > 0 ? rows : demoUseCases);
     }
 
     setLoading(false);
@@ -584,17 +538,13 @@ useEffect(() => {
     [useCases]
   );
 
+  const departments = useMemo(
+    () => ['All', ...Array.from(new Set(useCases.map((item) => item.department).filter(Boolean)))],
+    [useCases]
+  );
+
   async function saveItem(item: UseCaseItem): Promise<void> {
     setEditingItem(null);
-
-    if (!supabase) {
-      setUseCases((prev) => {
-        const exists = prev.some((existing) => existing.id === item.id);
-        return exists ? prev.map((existing) => (existing.id === item.id ? item : existing)) : [item, ...prev];
-      });
-      setNotice('Demo mode: changes are local only until Supabase is connected.');
-      return;
-    }
 
     if (!isEditor) {
       setNotice('You currently have read-only access.');
@@ -605,13 +555,18 @@ useEffect(() => {
 
     const payload: UseCaseItem = {
       ...item,
-      created_by: session?.user?.id,
+      created_by: 'editor',
     };
 
     const { data, error } = await supabase.from('use_cases').upsert(payload).select();
 
     if (error) {
-      setNotice('Save failed. Check your RLS policies and table schema.');
+      // Fall back to local update if Supabase write fails
+      setUseCases((prev) => {
+        const exists = prev.some((existing) => existing.id === item.id);
+        return exists ? prev.map((existing) => (existing.id === item.id ? item : existing)) : [item, ...prev];
+      });
+      setNotice('Could not save to database. Changes are local only. Check your Supabase RLS policies.');
     } else {
       await loadData();
       const savedRow = ((data as UseCaseItem[] | null) ?? [])[0] ?? null;
@@ -620,31 +575,6 @@ useEffect(() => {
     }
 
     setSaving(false);
-  }
-
-  async function signInWithMagicLink(): Promise<void> {
-    if (!supabase || !emailInput) return;
-
-    setNotice('');
-
-    const { error } = await supabase.auth.signInWithOtp({
-      email: emailInput,
-      options: {
-        emailRedirectTo: typeof window !== 'undefined' ? window.location.origin : undefined,
-      },
-    });
-
-    if (error) {
-      setNotice('Could not send sign-in link.');
-    } else {
-      setNotice('Magic link sent. Check your email.');
-    }
-  }
-
-  async function signOut(): Promise<void> {
-    if (!supabase) return;
-    await supabase.auth.signOut();
-    setUserRole(null);
   }
 
   return (
@@ -667,34 +597,8 @@ useEffect(() => {
             </div>
 
             <div className="flex flex-col items-start gap-3 md:items-end">
-              <AccessBadge role={session?.user ? userRole : null} />
-
-              {session?.user ? (
-                <div className="flex flex-wrap items-center gap-2 text-sm text-slate-300">
-                  <span>{session.user.email}</span>
-                  <Button variant="secondary" onClick={() => void signOut()} type="button">
-                    <LogOut className="h-4 w-4" /> Sign out
-                  </Button>
-                </div>
-              ) : (
-                <div className="flex w-full flex-col gap-2 sm:flex-row">
-                  <Input
-                    value={emailInput}
-                    onChange={(e) => setEmailInput(e.target.value)}
-                    placeholder="Enter work email"
-                    className="h-11 min-w-[220px] border-white/15 bg-white/10 text-white placeholder:text-slate-300"
-                  />
-                  <Button className="bg-white text-slate-900 hover:bg-slate-100" onClick={() => void signInWithMagicLink()} type="button">
-                    <LogIn className="h-4 w-4" /> Sign in
-                  </Button>
-                </div>
-              ) : (
-                <div className="rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-sm text-slate-200">
-                  Add Supabase keys to enable team sign-in and persistent storage.
-                </div>
-              )}
-
-              {(isEditor || !hasSupabaseEnv) ? (
+              <AccessBadge role={userRole} />
+              {isEditor ? (
                 <Button
                   className="bg-white text-slate-900 hover:bg-slate-100"
                   onClick={() => {
@@ -714,11 +618,9 @@ useEffect(() => {
           <Card>
             <CardContent className="flex items-center justify-between gap-3 p-4 text-sm text-slate-600">
               <span>{notice}</span>
-              {hasSupabaseEnv && session?.user ? (
-                <Button variant="outline" onClick={() => void loadData()} type="button">
-                  <RefreshCw className="h-4 w-4" /> Refresh
-                </Button>
-              ) : null}
+              <Button variant="outline" onClick={() => void loadData()} type="button">
+                <RefreshCw className="h-4 w-4" /> Refresh
+              </Button>
             </CardContent>
           </Card>
         ) : null}
