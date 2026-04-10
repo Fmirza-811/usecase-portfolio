@@ -3,7 +3,6 @@ import { GoogleSpreadsheet } from 'google-spreadsheet';
 import { JWT } from 'google-auth-library';
 
 const SPREADSHEET_ID = '1264Fl_2vzlBH-jI-xkHC2fCWJZNX0JJmzbPx8htgD7A';
-
 const SCOPES = ['https://www.googleapis.com/auth/spreadsheets'];
 
 function getJWT() {
@@ -35,6 +34,8 @@ export async function GET() {
       impact: row.get('impact'),
       notes: row.get('notes'),
       updated: row.get('updated'),
+      start_date: row.get('start_date'),
+      end_date: row.get('end_date'),
     }));
     return NextResponse.json(data);
   } catch (err) {
@@ -61,6 +62,8 @@ export async function POST(req: NextRequest) {
       existing.set('impact', body.impact);
       existing.set('notes', body.notes);
       existing.set('updated', body.updated);
+      existing.set('start_date', body.start_date);
+      existing.set('end_date', body.end_date);
       await existing.save();
     } else {
       await sheet.addRow({
@@ -75,6 +78,8 @@ export async function POST(req: NextRequest) {
         impact: body.impact,
         notes: body.notes,
         updated: body.updated,
+        start_date: body.start_date,
+        end_date: body.end_date,
       });
     }
 
