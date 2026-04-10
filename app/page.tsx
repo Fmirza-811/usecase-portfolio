@@ -1,6 +1,13 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from 'react';
+import type {
+  ReactNode,
+  ButtonHTMLAttributes,
+  InputHTMLAttributes,
+  TextareaHTMLAttributes,
+  SelectHTMLAttributes,
+} from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Plus,
@@ -23,10 +30,34 @@ import {
   Shield,
   Eye,
   RefreshCw,
+  type LucideIcon,
 } from 'lucide-react';
-import { createClient } from '@supabase/supabase-js';
+import { createClient, type Session } from '@supabase/supabase-js';
 
-const demoUseCases = [
+type UserRole = 'viewer' | 'editor' | 'admin' | null;
+type ViewMode = 'table' | 'cards';
+
+type UseCaseItem = {
+  id: string;
+  name: string;
+  department: string;
+  stakeholder: string;
+  status: string;
+  horizon: string;
+  priority: string;
+  description: string;
+  impact: string;
+  notes: string;
+  updated: string;
+  created_by?: string;
+};
+
+type SurfaceProps = {
+  className?: string;
+  children: ReactNode;
+};
+
+const demoUseCases: UseCaseItem[] = [
   {
     id: 'UC-001',
     name: 'Autobid RFP Response Automation',
@@ -85,11 +116,11 @@ const demoUseCases = [
   },
 ];
 
-const statusOptions = ['Idea', 'In Discovery', 'Planned', 'In Progress', 'Blocked', 'Live', 'On Hold'];
-const priorityOptions = ['Low', 'Medium', 'High', 'Critical'];
-const horizonOptions = ['Current Quarter', 'Next Quarter', 'Future Pipeline'];
+const statusOptions = ['Idea', 'In Discovery', 'Planned', 'In Progress', 'Blocked', 'Live', 'On Hold'] as const;
+const priorityOptions = ['Low', 'Medium', 'High', 'Critical'] as const;
+const horizonOptions = ['Current Quarter', 'Next Quarter', 'Future Pipeline'] as const;
 
-const statusStyles = {
+const statusStyles: Record<string, string> = {
   Idea: 'bg-slate-100 text-slate-700 border-slate-200',
   'In Discovery': 'bg-blue-100 text-blue-700 border-blue-200',
   Planned: 'bg-violet-100 text-violet-700 border-violet-200',
@@ -99,7 +130,7 @@ const statusStyles = {
   'On Hold': 'bg-zinc-100 text-zinc-700 border-zinc-200',
 };
 
-const priorityStyles = {
+const priorityStyles: Record<string, string> = {
   Low: 'bg-slate-100 text-slate-700 border-slate-200',
   Medium: 'bg-blue-100 text-blue-700 border-blue-200',
   High: 'bg-orange-100 text-orange-700 border-orange-200',
@@ -109,43 +140,55 @@ const priorityStyles = {
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 const hasSupabaseEnv = Boolean(supabaseUrl && supabaseAnonKey);
-const supabase = hasSupabaseEnv ? createClient(supabaseUrl, supabaseAnonKey) : null;
+const supabase = hasSupabaseEnv ? createClient(supabaseUrl!, supabaseAnonKey!) : null;
 
-function cn(...classes) {
+function cn(...classes: Array<string | false | null | undefined>): string {
   return classes.filter(Boolean).join(' ');
 }
 
-function Card({ className = '', children }) {
+function Card({ className, children }: SurfaceProps) {
   return <div className={cn('rounded-3xl bg-white shadow-sm', className)}>{children}</div>;
 }
 
-function CardHeader({ className = '', children }) {
+function CardHeader({ className, children }: SurfaceProps) {
   return <div className={cn('p-6 pb-3', className)}>{children}</div>;
 }
 
-function CardTitle({ className = '', children }) {
+function CardTitle({ className, children }: SurfaceProps) {
   return <h3 className={cn('text-lg font-semibold text-slate-900', className)}>{children}</h3>;
 }
 
-function CardDescription({ className = '', children }) {
+function CardDescription({ className, children }: SurfaceProps) {
   return <p className={cn('text-sm text-slate-500', className)}>{children}</p>;
 }
 
-function CardContent({ className = '', children }) {
+function CardContent({ className, children }: SurfaceProps) {
   return <div className={cn('p-6', className)}>{children}</div>;
 }
 
-function Button({ className = '', variant = 'default', size = 'default', children, ...props }) {
-  const variants = {
+type ButtonVariant = 'default' | 'outline' | 'ghost' | 'secondary';
+type ButtonSize = 'default' | 'icon';
+
+type ButtonProps = {
+  className?: string;
+  variant?: ButtonVariant;
+  size?: ButtonSize;
+  children: ReactNode;
+} & ButtonHTMLAttributes<HTMLButtonElement>;
+
+function Button({ className, variant = 'default', size = 'default', children, ...props }: ButtonProps) {
+  const variants: Record<ButtonVariant, string> = {
     default: 'bg-slate-900 text-white hover:bg-slate-800',
     outline: 'border border-slate-200 bg-white text-slate-900 hover:bg-slate-50',
     ghost: 'bg-transparent text-slate-700 hover:bg-slate-100',
     secondary: 'bg-slate-100 text-slate-900 hover:bg-slate-200',
   };
-  const sizes = {
+
+  const sizes: Record<ButtonSize, string> = {
     default: 'h-10 px-4 py-2',
     icon: 'h-10 w-10 p-0',
   };
+
   return (
     <button
       className={cn(
@@ -161,24 +204,60 @@ function Button({ className = '', variant = 'default', size = 'default', childre
   );
 }
 
-function Input({ className = '', ...props }) {
-  return <input className={cn('w-full rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 outline-none ring-0 placeholder:text-slate-400 focus:border-slate-300', className)} {...props} />;
+function Input({ className, ...props }: { className?: string } & InputHTMLAttributes<HTMLInputElement>) {
+  return (
+    <input
+      className={cn(
+        'w-full rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-slate-300',
+        className
+      )}
+      {...props}
+    />
+  );
 }
 
-function Textarea({ className = '', ...props }) {
-  return <textarea className={cn('w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none ring-0 placeholder:text-slate-400 focus:border-slate-300', className)} {...props} />;
+function Textarea({ className, ...props }: { className?: string } & TextareaHTMLAttributes<HTMLTextAreaElement>) {
+  return (
+    <textarea
+      className={cn(
+        'w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-slate-300',
+        className
+      )}
+      {...props}
+    />
+  );
 }
 
-function Select({ className = '', children, ...props }) {
-  return <select className={cn('w-full rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 outline-none focus:border-slate-300', className)} {...props}>{children}</select>;
+function Select({ className, children, ...props }: { className?: string; children: ReactNode } & SelectHTMLAttributes<HTMLSelectElement>) {
+  return (
+    <select
+      className={cn(
+        'w-full rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 outline-none focus:border-slate-300',
+        className
+      )}
+      {...props}
+    >
+      {children}
+    </select>
+  );
 }
 
-function Badge({ className = '', children }) {
+function Badge({ className, children }: SurfaceProps) {
   return <span className={cn('inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium', className)}>{children}</span>;
 }
 
-function Modal({ open, onClose, title, description, children, footer }) {
+type ModalProps = {
+  open: boolean;
+  onClose: () => void;
+  title: string;
+  description?: string;
+  children: ReactNode;
+  footer?: ReactNode;
+};
+
+function Modal({ open, onClose, title, description, children, footer }: ModalProps) {
   if (!open) return null;
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
       <div className="max-h-[90vh] w-full max-w-3xl overflow-auto rounded-3xl bg-white shadow-2xl">
@@ -186,30 +265,50 @@ function Modal({ open, onClose, title, description, children, footer }) {
           <div className="flex items-start justify-between gap-4">
             <div>
               <h2 className="text-2xl font-semibold">{title}</h2>
-              {description && <p className="mt-1 text-sm text-slate-300">{description}</p>}
+              {description ? <p className="mt-1 text-sm text-slate-300">{description}</p> : null}
             </div>
-            <Button size="icon" variant="secondary" onClick={onClose}><X className="h-4 w-4" /></Button>
+            <Button size="icon" variant="secondary" onClick={onClose} type="button">
+              <X className="h-4 w-4" />
+            </Button>
           </div>
         </div>
         <div>{children}</div>
-        {footer && <div className="border-t bg-slate-50 px-6 py-4">{footer}</div>}
+        {footer ? <div className="border-t bg-slate-50 px-6 py-4">{footer}</div> : null}
       </div>
     </div>
   );
 }
 
-function Drawer({ open, onClose, children }) {
+function Drawer({ open, onClose, children }: { open: boolean; onClose: () => void; children: ReactNode }) {
   return (
     <div className={cn('fixed inset-0 z-50 transition', open ? 'pointer-events-auto' : 'pointer-events-none')}>
-      <div className={cn('absolute inset-0 bg-slate-900/40 transition-opacity', open ? 'opacity-100' : 'opacity-0')} onClick={onClose} />
-      <div className={cn('absolute right-0 top-0 h-full w-full max-w-2xl overflow-auto bg-white shadow-2xl transition-transform', open ? 'translate-x-0' : 'translate-x-full')}>
+      <div
+        className={cn('absolute inset-0 bg-slate-900/40 transition-opacity', open ? 'opacity-100' : 'opacity-0')}
+        onClick={onClose}
+      />
+      <div
+        className={cn(
+          'absolute right-0 top-0 h-full w-full max-w-2xl overflow-auto bg-white shadow-2xl transition-transform',
+          open ? 'translate-x-0' : 'translate-x-full'
+        )}
+      >
         {children}
       </div>
     </div>
   );
 }
 
-function StatCard({ title, value, icon: Icon, subtitle }) {
+function StatCard({
+  title,
+  value,
+  icon: Icon,
+  subtitle,
+}: {
+  title: string;
+  value: number;
+  icon: LucideIcon;
+  subtitle: string;
+}) {
   return (
     <Card className="border-0">
       <CardContent className="p-5">
@@ -228,18 +327,34 @@ function StatCard({ title, value, icon: Icon, subtitle }) {
   );
 }
 
-function AccessBadge({ role }) {
+function AccessBadge({ role }: { role: UserRole }) {
   const isEditor = role === 'editor' || role === 'admin';
+
   return (
-    <Badge className={cn('border', isEditor ? 'border-emerald-200 bg-emerald-100 text-emerald-700' : 'border-slate-200 bg-slate-100 text-slate-700')}>
+    <Badge
+      className={cn(
+        'border',
+        isEditor ? 'border-emerald-200 bg-emerald-100 text-emerald-700' : 'border-slate-200 bg-slate-100 text-slate-700'
+      )}
+    >
       {isEditor ? <Shield className="mr-1 h-3.5 w-3.5" /> : <Eye className="mr-1 h-3.5 w-3.5" />}
       {role ? `${role.charAt(0).toUpperCase()}${role.slice(1)} access` : 'Demo mode'}
     </Badge>
   );
 }
 
-function UseCaseForm({ open, onOpenChange, onSave, editingItem }) {
-  const emptyForm = {
+function UseCaseForm({
+  open,
+  onOpenChange,
+  onSave,
+  editingItem,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSave: (item: UseCaseItem) => void;
+  editingItem: UseCaseItem | null;
+}) {
+  const emptyForm: UseCaseItem = {
     id: '',
     name: '',
     department: '',
@@ -253,13 +368,15 @@ function UseCaseForm({ open, onOpenChange, onSave, editingItem }) {
     updated: new Date().toISOString().slice(0, 10),
   };
 
-  const [form, setForm] = useState(editingItem || emptyForm);
+  const [form, setForm] = useState<UseCaseItem>(editingItem ?? emptyForm);
 
   useEffect(() => {
-    setForm(editingItem || emptyForm);
+    setForm(editingItem ?? emptyForm);
   }, [editingItem, open]);
 
-  const update = (key, value) => setForm((prev) => ({ ...prev, [key]: value }));
+  const update = (key: keyof UseCaseItem, value: string) => {
+    setForm((prev) => ({ ...prev, [key]: value }));
+  };
 
   return (
     <Modal
@@ -269,13 +386,16 @@ function UseCaseForm({ open, onOpenChange, onSave, editingItem }) {
       description="Keep updates lightweight while capturing enough detail for reviews, planning, and execution."
       footer={
         <div className="flex justify-end gap-3">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)} type="button">
+            Cancel
+          </Button>
           <Button
             onClick={() => {
               if (!form.id || !form.name) return;
               onSave({ ...form, updated: form.updated || new Date().toISOString().slice(0, 10) });
               onOpenChange(false);
             }}
+            type="button"
           >
             {editingItem ? 'Save changes' : 'Create use case'}
           </Button>
@@ -306,32 +426,44 @@ function UseCaseForm({ open, onOpenChange, onSave, editingItem }) {
         <div>
           <label className="mb-2 block text-sm font-medium text-slate-700">Status</label>
           <Select value={form.status} onChange={(e) => update('status', e.target.value)}>
-            {statusOptions.map((s) => <option key={s} value={s}>{s}</option>)}
+            {statusOptions.map((option) => (
+              <option key={option} value={option}>
+                {option}
+              </option>
+            ))}
           </Select>
         </div>
         <div>
           <label className="mb-2 block text-sm font-medium text-slate-700">Priority</label>
           <Select value={form.priority} onChange={(e) => update('priority', e.target.value)}>
-            {priorityOptions.map((s) => <option key={s} value={s}>{s}</option>)}
+            {priorityOptions.map((option) => (
+              <option key={option} value={option}>
+                {option}
+              </option>
+            ))}
           </Select>
         </div>
         <div className="md:col-span-2">
           <label className="mb-2 block text-sm font-medium text-slate-700">Portfolio Horizon</label>
           <Select value={form.horizon} onChange={(e) => update('horizon', e.target.value)}>
-            {horizonOptions.map((s) => <option key={s} value={s}>{s}</option>)}
+            {horizonOptions.map((option) => (
+              <option key={option} value={option}>
+                {option}
+              </option>
+            ))}
           </Select>
         </div>
         <div className="md:col-span-2">
           <label className="mb-2 block text-sm font-medium text-slate-700">Description</label>
-          <Textarea value={form.description} onChange={(e) => update('description', e.target.value)} placeholder="What is this use case about?" className="min-h-[110px]" />
+          <Textarea value={form.description} onChange={(e) => update('description', e.target.value)} className="min-h-[110px]" />
         </div>
         <div className="md:col-span-2">
           <label className="mb-2 block text-sm font-medium text-slate-700">Expected Impact</label>
-          <Textarea value={form.impact} onChange={(e) => update('impact', e.target.value)} placeholder="What business value does this create?" className="min-h-[90px]" />
+          <Textarea value={form.impact} onChange={(e) => update('impact', e.target.value)} className="min-h-[90px]" />
         </div>
         <div className="md:col-span-2">
           <label className="mb-2 block text-sm font-medium text-slate-700">Notes</label>
-          <Textarea value={form.notes} onChange={(e) => update('notes', e.target.value)} placeholder="Dependencies, blockers, context, next step..." className="min-h-[90px]" />
+          <Textarea value={form.notes} onChange={(e) => update('notes', e.target.value)} className="min-h-[90px]" />
         </div>
       </div>
     </Modal>
@@ -339,28 +471,29 @@ function UseCaseForm({ open, onOpenChange, onSave, editingItem }) {
 }
 
 export default function UseCasePortfolioApp() {
-  const [useCases, setUseCases] = useState(demoUseCases);
+  const [useCases, setUseCases] = useState<UseCaseItem[]>(demoUseCases);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [deptFilter, setDeptFilter] = useState('All');
-  const [view, setView] = useState('table');
-  const [activeItem, setActiveItem] = useState(null);
+  const [view, setView] = useState<ViewMode>('table');
+  const [activeItem, setActiveItem] = useState<UseCaseItem | null>(null);
   const [formOpen, setFormOpen] = useState(false);
-  const [editingItem, setEditingItem] = useState(null);
+  const [editingItem, setEditingItem] = useState<UseCaseItem | null>(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [session, setSession] = useState(null);
-  const [userRole, setUserRole] = useState(null);
+  const [session, setSession] = useState<Session | null>(null);
+  const [userRole, setUserRole] = useState<UserRole>(null);
   const [emailInput, setEmailInput] = useState('');
   const [notice, setNotice] = useState('');
 
   const isEditor = userRole === 'editor' || userRole === 'admin';
-  const departments = useMemo(() => ['All', ...Array.from(new Set(useCases.map((u) => u.department).filter(Boolean)))], [useCases]);
+
+  const departments = useMemo(() => ['All', ...Array.from(new Set(useCases.map((item) => item.department).filter(Boolean)))], [useCases]);
 
   useEffect(() => {
     if (!supabase) return;
 
-    supabase.auth.getSession().then(({ data }) => {
+    void supabase.auth.getSession().then(({ data }) => {
       setSession(data.session ?? null);
     });
 
@@ -380,15 +513,16 @@ export default function UseCasePortfolioApp() {
       return;
     }
 
-    loadData();
+    void loadData();
   }, [session]);
 
-  async function loadData() {
-    if (!supabase) return;
+  async function loadData(): Promise<void> {
+    if (!supabase || !session?.user) return;
+
     setLoading(true);
     setNotice('');
 
-    const [{ data: roleRows, error: roleError }, { data: useCaseRows, error: useCaseError }] = await Promise.all([
+    const [{ data: roleRow, error: roleError }, { data: useCaseRows, error: useCaseError }] = await Promise.all([
       supabase.from('user_roles').select('role').eq('user_id', session.user.id).maybeSingle(),
       supabase.from('use_cases').select('*').order('updated', { ascending: false }),
     ]);
@@ -396,14 +530,16 @@ export default function UseCasePortfolioApp() {
     if (roleError) {
       setNotice('Signed in, but role lookup failed. Check RLS or user_roles setup.');
     } else {
-      setUserRole(roleRows?.role ?? 'viewer');
+      const fetchedRole = (roleRow?.role as UserRole) ?? 'viewer';
+      setUserRole(fetchedRole);
     }
 
     if (useCaseError) {
       setNotice('Could not load live data. Showing demo content until Supabase is fully configured.');
       setUseCases(demoUseCases);
     } else {
-      setUseCases(useCaseRows?.length ? useCaseRows : []);
+      const rows = (useCaseRows as UseCaseItem[] | null) ?? [];
+      setUseCases(rows);
     }
 
     setLoading(false);
@@ -411,28 +547,31 @@ export default function UseCasePortfolioApp() {
 
   const filtered = useMemo(() => {
     return useCases.filter((item) => {
-      const text = `${item.id} ${item.name} ${item.department} ${item.stakeholder} ${item.description} ${item.notes}`.toLowerCase();
-      const matchesSearch = text.includes(search.toLowerCase());
+      const searchableText = `${item.id} ${item.name} ${item.department} ${item.stakeholder} ${item.description} ${item.notes}`.toLowerCase();
+      const matchesSearch = searchableText.includes(search.toLowerCase());
       const matchesStatus = statusFilter === 'All' || item.status === statusFilter;
       const matchesDept = deptFilter === 'All' || item.department === deptFilter;
       return matchesSearch && matchesStatus && matchesDept;
     });
   }, [useCases, search, statusFilter, deptFilter]);
 
-  const stats = useMemo(() => ({
-    total: useCases.length,
-    current: useCases.filter((u) => u.horizon === 'Current Quarter').length,
-    future: useCases.filter((u) => u.horizon === 'Future Pipeline').length,
-    liveOrProgress: useCases.filter((u) => ['Live', 'In Progress'].includes(u.status)).length,
-  }), [useCases]);
+  const stats = useMemo(
+    () => ({
+      total: useCases.length,
+      current: useCases.filter((item) => item.horizon === 'Current Quarter').length,
+      future: useCases.filter((item) => item.horizon === 'Future Pipeline').length,
+      liveOrProgress: useCases.filter((item) => ['Live', 'In Progress'].includes(item.status)).length,
+    }),
+    [useCases]
+  );
 
-  async function saveItem(item) {
+  async function saveItem(item: UseCaseItem): Promise<void> {
     setEditingItem(null);
 
     if (!supabase) {
       setUseCases((prev) => {
-        const exists = prev.some((u) => u.id === item.id);
-        return exists ? prev.map((u) => (u.id === item.id ? item : u)) : [item, ...prev];
+        const exists = prev.some((existing) => existing.id === item.id);
+        return exists ? prev.map((existing) => (existing.id === item.id ? item : existing)) : [item, ...prev];
       });
       setNotice('Demo mode: changes are local only until Supabase is connected.');
       return;
@@ -444,7 +583,8 @@ export default function UseCasePortfolioApp() {
     }
 
     setSaving(true);
-    const payload = {
+
+    const payload: UseCaseItem = {
       ...item,
       created_by: session?.user?.id,
     };
@@ -455,16 +595,19 @@ export default function UseCasePortfolioApp() {
       setNotice('Save failed. Check your RLS policies and table schema.');
     } else {
       await loadData();
-      if (data?.[0]) setActiveItem(data[0]);
+      const savedRow = ((data as UseCaseItem[] | null) ?? [])[0] ?? null;
+      if (savedRow) setActiveItem(savedRow);
       setNotice('Saved successfully.');
     }
 
     setSaving(false);
   }
 
-  async function signInWithMagicLink() {
+  async function signInWithMagicLink(): Promise<void> {
     if (!supabase || !emailInput) return;
+
     setNotice('');
+
     const { error } = await supabase.auth.signInWithOtp({
       email: emailInput,
       options: {
@@ -479,7 +622,7 @@ export default function UseCasePortfolioApp() {
     }
   }
 
-  async function signOut() {
+  async function signOut(): Promise<void> {
     if (!supabase) return;
     await supabase.auth.signOut();
     setUserRole(null);
@@ -503,12 +646,14 @@ export default function UseCasePortfolioApp() {
                 Centralized view of ongoing initiatives, pipeline opportunities, and ownership across the organization.
               </p>
             </div>
+
             <div className="flex flex-col items-start gap-3 md:items-end">
               <AccessBadge role={hasSupabaseEnv ? userRole : null} />
+
               {session?.user ? (
                 <div className="flex flex-wrap items-center gap-2 text-sm text-slate-300">
                   <span>{session.user.email}</span>
-                  <Button variant="secondary" onClick={signOut}>
+                  <Button variant="secondary" onClick={() => void signOut()} type="button">
                     <LogOut className="h-4 w-4" /> Sign out
                   </Button>
                 </div>
@@ -520,7 +665,7 @@ export default function UseCasePortfolioApp() {
                     placeholder="Enter work email"
                     className="h-11 min-w-[220px] border-white/15 bg-white/10 text-white placeholder:text-slate-300"
                   />
-                  <Button className="bg-white text-slate-900 hover:bg-slate-100" onClick={signInWithMagicLink}>
+                  <Button className="bg-white text-slate-900 hover:bg-slate-100" onClick={() => void signInWithMagicLink()} type="button">
                     <LogIn className="h-4 w-4" /> Sign in
                   </Button>
                 </div>
@@ -529,33 +674,35 @@ export default function UseCasePortfolioApp() {
                   Add Supabase keys to enable team sign-in and persistent storage.
                 </div>
               )}
-              {(isEditor || !hasSupabaseEnv) && (
+
+              {(isEditor || !hasSupabaseEnv) ? (
                 <Button
                   className="bg-white text-slate-900 hover:bg-slate-100"
                   onClick={() => {
                     setEditingItem(null);
                     setFormOpen(true);
                   }}
+                  type="button"
                 >
                   <Plus className="h-4 w-4" /> Add use case
                 </Button>
-              )}
+              ) : null}
             </div>
           </div>
         </motion.div>
 
-        {notice && (
+        {notice ? (
           <Card>
             <CardContent className="flex items-center justify-between gap-3 p-4 text-sm text-slate-600">
               <span>{notice}</span>
-              {hasSupabaseEnv && session?.user && (
-                <Button variant="outline" onClick={loadData}>
+              {hasSupabaseEnv && session?.user ? (
+                <Button variant="outline" onClick={() => void loadData()} type="button">
                   <RefreshCw className="h-4 w-4" /> Refresh
                 </Button>
-              )}
+              ) : null}
             </CardContent>
           </Card>
-        )}
+        ) : null}
 
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <StatCard title="Total use cases" value={stats.total} subtitle="Across current and future portfolio" icon={Briefcase} />
@@ -577,26 +724,44 @@ export default function UseCasePortfolioApp() {
                     className="h-11 pl-11"
                   />
                 </div>
+
                 <div className="relative">
                   <Filter className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                   <Select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="h-11 w-full pl-10 md:w-[180px]">
                     <option value="All">All statuses</option>
-                    {statusOptions.map((s) => <option key={s} value={s}>{s}</option>)}
+                    {statusOptions.map((option) => (
+                      <option key={option} value={option}>
+                        {option}
+                      </option>
+                    ))}
                   </Select>
                 </div>
+
                 <div className="relative">
                   <Building2 className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                   <Select value={deptFilter} onChange={(e) => setDeptFilter(e.target.value)} className="h-11 w-full pl-10 md:w-[180px]">
-                    {departments.map((d) => <option key={d} value={d}>{d === 'All' ? 'All departments' : d}</option>)}
+                    {departments.map((department) => (
+                      <option key={department} value={department}>
+                        {department === 'All' ? 'All departments' : department}
+                      </option>
+                    ))}
                   </Select>
                 </div>
               </div>
 
               <div className="inline-flex rounded-2xl bg-slate-100 p-1">
-                <button className={cn('inline-flex items-center rounded-xl px-3 py-2 text-sm', view === 'table' ? 'bg-white shadow-sm' : 'text-slate-600')} onClick={() => setView('table')}>
+                <button
+                  className={cn('inline-flex items-center rounded-xl px-3 py-2 text-sm', view === 'table' ? 'bg-white shadow-sm' : 'text-slate-600')}
+                  onClick={() => setView('table')}
+                  type="button"
+                >
                   <Table2 className="mr-2 h-4 w-4" /> Table
                 </button>
-                <button className={cn('inline-flex items-center rounded-xl px-3 py-2 text-sm', view === 'cards' ? 'bg-white shadow-sm' : 'text-slate-600')} onClick={() => setView('cards')}>
+                <button
+                  className={cn('inline-flex items-center rounded-xl px-3 py-2 text-sm', view === 'cards' ? 'bg-white shadow-sm' : 'text-slate-600')}
+                  onClick={() => setView('cards')}
+                  type="button"
+                >
                   <LayoutGrid className="mr-2 h-4 w-4" /> Cards
                 </button>
               </div>
@@ -626,31 +791,38 @@ export default function UseCasePortfolioApp() {
                       {filtered.map((item) => (
                         <tr key={item.id} className="border-t border-slate-100 transition-colors hover:bg-slate-50/70">
                           <td className="px-6 py-4">
-                            <button className="group text-left" onClick={() => setActiveItem(item)}>
+                            <button className="group text-left" onClick={() => setActiveItem(item)} type="button">
                               <div className="font-medium text-slate-900 group-hover:text-slate-700">{item.name}</div>
                               <div className="mt-1 text-xs text-slate-500">{item.id}</div>
                             </button>
                           </td>
                           <td className="px-6 py-4 text-sm text-slate-700">{item.department}</td>
                           <td className="px-6 py-4 text-sm text-slate-700">{item.stakeholder}</td>
-                          <td className="px-6 py-4"><Badge className={cn('border', statusStyles[item.status])}>{item.status}</Badge></td>
-                          <td className="px-6 py-4"><Badge className={cn('border', priorityStyles[item.priority])}>{item.priority}</Badge></td>
+                          <td className="px-6 py-4">
+                            <Badge className={cn('border', statusStyles[item.status])}>{item.status}</Badge>
+                          </td>
+                          <td className="px-6 py-4">
+                            <Badge className={cn('border', priorityStyles[item.priority])}>{item.priority}</Badge>
+                          </td>
                           <td className="px-6 py-4 text-sm text-slate-700">{item.horizon}</td>
                           <td className="px-6 py-4 text-sm text-slate-500">{item.updated}</td>
                           <td className="px-6 py-4 text-right">
                             <div className="flex justify-end gap-2">
-                              <Button variant="outline" onClick={() => setActiveItem(item)}>View</Button>
-                              {isEditor && (
+                              <Button variant="outline" onClick={() => setActiveItem(item)} type="button">
+                                View
+                              </Button>
+                              {isEditor ? (
                                 <Button
                                   variant="ghost"
                                   onClick={() => {
                                     setEditingItem(item);
                                     setFormOpen(true);
                                   }}
+                                  type="button"
                                 >
                                   <Pencil className="h-4 w-4" />
                                 </Button>
-                              )}
+                              ) : null}
                             </div>
                           </td>
                         </tr>
@@ -658,14 +830,18 @@ export default function UseCasePortfolioApp() {
                     </tbody>
                   </table>
                 </div>
-                {loading && <div className="p-8 text-center text-slate-500">Loading data...</div>}
-                {!loading && filtered.length === 0 && (
-                  <div className="p-12 text-center text-slate-500">No use cases match the current filters.</div>
-                )}
+                {loading ? <div className="p-8 text-center text-slate-500">Loading data...</div> : null}
+                {!loading && filtered.length === 0 ? <div className="p-12 text-center text-slate-500">No use cases match the current filters.</div> : null}
               </Card>
             </motion.div>
           ) : (
-            <motion.div key="cards" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            <motion.div
+              key="cards"
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -6 }}
+              className="grid gap-4 md:grid-cols-2 xl:grid-cols-3"
+            >
               {filtered.map((item) => (
                 <Card key={item.id} className="rounded-[28px] transition-transform hover:-translate-y-1">
                   <CardHeader className="pb-3">
@@ -682,25 +858,34 @@ export default function UseCasePortfolioApp() {
                       <Badge className={cn('border', statusStyles[item.status])}>{item.status}</Badge>
                       <Badge className={cn('border', priorityStyles[item.priority])}>{item.priority}</Badge>
                     </div>
-                    <p className="line-clamp-3 text-sm leading-6 text-slate-600">{item.description}</p>
+                    <p className="text-sm leading-6 text-slate-600">{item.description}</p>
                     <div className="grid gap-3 text-sm text-slate-600">
-                      <div className="flex items-center gap-2"><Building2 className="h-4 w-4" /> {item.department}</div>
-                      <div className="flex items-center gap-2"><User2 className="h-4 w-4" /> {item.stakeholder}</div>
-                      <div className="flex items-center gap-2"><CalendarDays className="h-4 w-4" /> {item.horizon}</div>
+                      <div className="flex items-center gap-2">
+                        <Building2 className="h-4 w-4" /> {item.department}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <User2 className="h-4 w-4" /> {item.stakeholder}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <CalendarDays className="h-4 w-4" /> {item.horizon}
+                      </div>
                     </div>
                     <div className="flex gap-2 pt-2">
-                      <Button className="flex-1" onClick={() => setActiveItem(item)}>Open details</Button>
-                      {isEditor && (
+                      <Button className="flex-1" onClick={() => setActiveItem(item)} type="button">
+                        Open details
+                      </Button>
+                      {isEditor ? (
                         <Button
                           variant="outline"
                           onClick={() => {
                             setEditingItem(item);
                             setFormOpen(true);
                           }}
+                          type="button"
                         >
                           <Pencil className="h-4 w-4" />
                         </Button>
-                      )}
+                      ) : null}
                     </div>
                   </CardContent>
                 </Card>
@@ -709,10 +894,10 @@ export default function UseCasePortfolioApp() {
           )}
         </AnimatePresence>
 
-        <UseCaseForm open={formOpen} onOpenChange={setFormOpen} onSave={saveItem} editingItem={editingItem} />
+        <UseCaseForm open={formOpen} onOpenChange={setFormOpen} onSave={(item) => void saveItem(item)} editingItem={editingItem} />
 
-        <Drawer open={!!activeItem} onClose={() => setActiveItem(null)}>
-          {activeItem && (
+        <Drawer open={Boolean(activeItem)} onClose={() => setActiveItem(null)}>
+          {activeItem ? (
             <>
               <div className="bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 p-6 text-white">
                 <div className="mb-4 flex items-start justify-between gap-4">
@@ -721,7 +906,9 @@ export default function UseCasePortfolioApp() {
                     <h2 className="mt-1 text-2xl font-semibold text-white">{activeItem.name}</h2>
                     <p className="mt-1 text-sm text-slate-300">Detailed portfolio view for planning, review, and execution.</p>
                   </div>
-                  <Button size="icon" variant="secondary" onClick={() => setActiveItem(null)}><X className="h-4 w-4" /></Button>
+                  <Button size="icon" variant="secondary" onClick={() => setActiveItem(null)} type="button">
+                    <X className="h-4 w-4" />
+                  </Button>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <Badge className={cn('border border-white/20 bg-white/10 text-white', statusStyles[activeItem.status])}>{activeItem.status}</Badge>
@@ -747,21 +934,33 @@ export default function UseCasePortfolioApp() {
                 </div>
 
                 <Card className="border border-slate-200 shadow-none">
-                  <CardHeader><CardTitle>Description</CardTitle></CardHeader>
-                  <CardContent><p className="leading-7 text-slate-700">{activeItem.description}</p></CardContent>
+                  <CardHeader>
+                    <CardTitle>Description</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="leading-7 text-slate-700">{activeItem.description}</p>
+                  </CardContent>
                 </Card>
 
                 <Card className="border border-slate-200 shadow-none">
-                  <CardHeader><CardTitle>Expected impact</CardTitle></CardHeader>
-                  <CardContent><p className="leading-7 text-slate-700">{activeItem.impact}</p></CardContent>
+                  <CardHeader>
+                    <CardTitle>Expected impact</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="leading-7 text-slate-700">{activeItem.impact}</p>
+                  </CardContent>
                 </Card>
 
                 <Card className="border border-slate-200 shadow-none">
-                  <CardHeader><CardTitle>Notes and execution context</CardTitle></CardHeader>
-                  <CardContent><p className="leading-7 text-slate-700">{activeItem.notes}</p></CardContent>
+                  <CardHeader>
+                    <CardTitle>Notes and execution context</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="leading-7 text-slate-700">{activeItem.notes}</p>
+                  </CardContent>
                 </Card>
 
-                {isEditor && (
+                {isEditor ? (
                   <div className="flex gap-3">
                     <Button
                       disabled={saving}
@@ -769,14 +968,15 @@ export default function UseCasePortfolioApp() {
                         setEditingItem(activeItem);
                         setFormOpen(true);
                       }}
+                      type="button"
                     >
                       <Pencil className="h-4 w-4" /> Edit use case
                     </Button>
                   </div>
-                )}
+                ) : null}
               </div>
             </>
-          )}
+          ) : null}
         </Drawer>
       </div>
     </div>
