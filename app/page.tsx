@@ -490,31 +490,50 @@ export default function UseCasePortfolioApp() {
 
   const departments = useMemo(() => ['All', ...Array.from(new Set(useCases.map((item) => item.department).filter(Boolean)))], [useCases]);
 
-  useEffect(() => {
-    if (!supabase) return;
+useEffect(() => {
+  if (!supabase) return;
 
-    void supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session ?? null);
-    });
+  let mounted = true;
 
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, currentSession) => {
-      setSession(currentSession ?? null);
-    });
+  const loadSession = async () => {
+    const { data, error } = await supabase.auth.getSession();
 
-    return () => subscription.unsubscribe();
-  }, []);
+    if (!mounted) return;
 
-  useEffect(() => {
-    if (!supabase || !session?.user) {
-      setUserRole(null);
-      if (!supabase) setUseCases(demoUseCases);
+    if (error) {
+      console.error("Session error:", error.message);
+      setSession(null);
       return;
     }
 
-    void loadData();
-  }, [session]);
+    setSession(data.session ?? null);
+  };
+
+  void loadSession();
+
+  const {
+    data: { subscription },
+  } = supabase.auth.onAuthStateChange((_event, currentSession) => {
+    if (!mounted) return;
+    setSession(currentSession ?? null);
+  });
+
+  return () => {
+    mounted = false;
+    subscription.unsubscribe();
+  };
+}, []);
+
+useEffect(() => {
+  if (!supabase) return;
+
+  if (!session?.user) {
+    setUserRole(null);
+    return;
+  }
+
+  void loadData();
+}, [session]);
 
   async function loadData(): Promise<void> {
     if (!supabase || !session?.user) return;
@@ -648,7 +667,7 @@ export default function UseCasePortfolioApp() {
             </div>
 
             <div className="flex flex-col items-start gap-3 md:items-end">
-              <AccessBadge role={hasSupabaseEnv ? userRole : null} />
+              <AccessBadge role={session?.user ? userRole : null} />
 
               {session?.user ? (
                 <div className="flex flex-wrap items-center gap-2 text-sm text-slate-300">
@@ -657,7 +676,7 @@ export default function UseCasePortfolioApp() {
                     <LogOut className="h-4 w-4" /> Sign out
                   </Button>
                 </div>
-              ) : hasSupabaseEnv ? (
+              ) : (
                 <div className="flex w-full flex-col gap-2 sm:flex-row">
                   <Input
                     value={emailInput}
