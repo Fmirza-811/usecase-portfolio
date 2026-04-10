@@ -138,14 +138,9 @@ const priorityStyles: Record<string, string> = {
 };
 const supabaseUrl = "https://cflgpbcqyxnzbxzlvfuk.supabase.co";
 const supabaseAnonKey = "sb_publishable_lqYENJ8RnyBlYhCKSFy3kg_aa7PeiOa";
-const hasSupabaseEnv =
-  typeof supabaseUrl === "string" &&
-  supabaseUrl.length > 0 &&
-  typeof supabaseAnonKey === "string" &&
-  supabaseAnonKey.length > 0;
-  console.log("URL:", supabaseUrl);
-console.log("KEY:", supabaseAnonKey);
-const supabase = hasSupabaseEnv ? createClient(supabaseUrl!, supabaseAnonKey!) : null;
+
+const supabase = createClient(supabaseUrl, supabaseAnonKey);
+const hasSupabaseEnv = true;
 
 function cn(...classes: Array<string | false | null | undefined>): string {
   return classes.filter(Boolean).join(' ');
