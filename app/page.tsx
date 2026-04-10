@@ -136,9 +136,8 @@ const priorityStyles: Record<string, string> = {
   High: 'bg-orange-100 text-orange-700 border-orange-200',
   Critical: 'bg-rose-100 text-rose-700 border-rose-200',
 };
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+const supabaseUrl = "https://cflgpbcqyxnzbxzlvfuk.supabase.co";
+const supabaseAnonKey = "sb_publishable_lqYENJ8RnyBlYhCKSFy3kg_aa7PeiOa";
 const hasSupabaseEnv =
   typeof supabaseUrl === "string" &&
   supabaseUrl.length > 0 &&
