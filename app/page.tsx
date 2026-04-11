@@ -387,8 +387,19 @@ function UseCaseForm({ open, onOpenChange, onSave, editingItem }: {
           <Input value={form.id} onChange={(e) => update('id', e.target.value)} placeholder="UC-005" />
         </div>
         <div>
-          <label className="mb-2 block text-sm font-medium text-slate-700">Department</label>
-          <Input value={form.department} onChange={(e) => update('department', e.target.value)} placeholder="Strategy" />
+          <<label className="mb-2 block text-sm font-medium text-slate-700">Department</label>
+<Select value={form.department} onChange={(e) => update('department', e.target.value)}>
+  <option value="">Select department</option>
+  <option value="Pre-Sales">Pre-Sales</option>
+  <option value="Strategy">Strategy</option>
+  <option value="Sales">Sales</option>
+  <option value="HR">HR</option>
+  <option value="Finance">Finance</option>
+  <option value="QA">QA</option>
+  <option value="BD">BD</option>
+  <option value="Marketing">Marketing</option>
+  <option value="Client Services">Client Services</option>
+</Select>
         </div>
         <div className="md:col-span-2">
           <label className="mb-2 block text-sm font-medium text-slate-700">Use Case Name</label>
