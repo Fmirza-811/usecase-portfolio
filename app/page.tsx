@@ -387,7 +387,7 @@ function UseCaseForm({ open, onOpenChange, onSave, editingItem }: {
           <Input value={form.id} onChange={(e) => update('id', e.target.value)} placeholder="UC-005" />
         </div>
         <div>
-          <<label className="mb-2 block text-sm font-medium text-slate-700">Department</label>
+          <label className="mb-2 block text-sm font-medium text-slate-700">Department</label>
 <Select value={form.department} onChange={(e) => update('department', e.target.value)}>
   <option value="">Select department</option>
   <option value="Pre-Sales">Pre-Sales</option>
