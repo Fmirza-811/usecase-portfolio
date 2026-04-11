@@ -551,7 +551,7 @@ export default function UseCasePortfolioApp() {
             <div className="flex flex-col items-start gap-3 md:items-end">
               <AccessBadge role={userRole} />
               {isEditor && (
-                <<<Button className="border border-white/30 bg-white text-slate-900 hover:bg-slate-100"
+                <Button className="border border-white/30 bg-white text-slate-900 hover:bg-slate-100"
                   onClick={() => { setEditingItem(null); setFormOpen(true); }} type="button">
                   <Plus className="h-4 w-4" /> Add use case
                 </Button>
