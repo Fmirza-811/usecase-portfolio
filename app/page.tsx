@@ -319,15 +319,11 @@ function GanttChart({ items }: { items: UseCaseItem[] }) {
                     </div>
                     {/* Bar row */}
                     <div className="relative h-8 w-full rounded-xl bg-slate-50">
-                      <div
-                        className={cn('absolute h-full rounded-xl opacity-90 transition-all', barColor)}
-                        style={{ left: `${Math.max(0, leftPct)}%`, width: `${Math.min(100 - Math.max(0, leftPct), widthPct)}%` }}
-                        title={`${item.start_date} → ${item.end_date}`}
-                      >
-                        <span className="absolute inset-0 flex items-center px-3 text-xs font-medium text-white truncate">
-                          {item.status}
-                        </span>
-                      </div>
+                     <div
+  className={cn('absolute h-full rounded-xl opacity-90 transition-all cursor-pointer', barColor)}
+  style={{ left: `${Math.max(0, leftPct)}%`, width: `${Math.min(100 - Math.max(0, leftPct), widthPct)}%` }}
+  title={`${item.status} | ${item.start_date} → ${item.end_date}`}
+/>
                     </div>
                   </div>
                 );

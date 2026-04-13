@@ -1,0 +1,973 @@
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8">
+<title>CR Management System</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:#f0f2f5;color:#1a1a2e;min-height:100vh}
+:root{--navy:#0f2044;--blue:#1e5fc2;--blue-light:#3d7de8;--slate:#4a5568;--slate-light:#718096;--border:#e2e8f0;--card:#fff;--green:#0d9e6e;--amber:#d97706;--red:#dc2626;--purple:#7c3aed;--teal:#0891b2;--green-bg:#d1fae5;--amber-bg:#fef3c7;--red-bg:#fee2e2;--purple-bg:#ede9fe;--teal-bg:#cffafe;--green-text:#065f46;--amber-text:#92400e;--red-text:#991b1b;--purple-text:#5b21b6;--teal-text:#164e63;--sidebar-w:218px}
+.app{display:flex;height:100vh;overflow:hidden}
+.sidebar{width:var(--sidebar-w);background:var(--navy);flex-shrink:0;display:flex;flex-direction:column;overflow-y:auto}
+.sidebar-brand{padding:18px 16px 12px;border-bottom:1px solid rgba(255,255,255,.08)}
+.brand-icon{width:30px;height:30px;border-radius:6px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.18);display:flex;align-items:center;justify-content:center;margin-bottom:9px;color:#fff}
+.sidebar-brand h1{font-size:11px;font-weight:700;color:#fff;letter-spacing:.6px;text-transform:uppercase;line-height:1.4}
+.sidebar-brand p{font-size:9px;color:rgba(255,255,255,.38);margin-top:1px}
+.sidebar-nav{padding:8px 0;flex:1}
+.nav-section{padding:4px 16px;font-size:9px;font-weight:600;color:rgba(255,255,255,.28);text-transform:uppercase;letter-spacing:.9px;margin-top:8px}
+.nav-item{display:flex;align-items:center;gap:9px;padding:8px 16px;cursor:pointer;font-size:12px;color:rgba(255,255,255,.6);transition:all .15s;border-left:2px solid transparent}
+.nav-item:hover{background:rgba(255,255,255,.05);color:#fff}
+.nav-item.active{background:rgba(255,255,255,.09);color:#fff;border-left-color:var(--blue-light)}
+.nav-icon{width:14px;height:14px;flex-shrink:0;opacity:.75}
+.nav-item.active .nav-icon{opacity:1}
+.sidebar-user{padding:12px 16px;border-top:1px solid rgba(255,255,255,.08)}
+.sidebar-user .u-name{font-size:12px;font-weight:600;color:#fff}
+.main{flex:1;overflow-y:auto;display:flex;flex-direction:column;min-width:0}
+.topbar{background:#fff;border-bottom:1px solid var(--border);padding:12px 22px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.topbar h2{font-size:15px;font-weight:700;color:var(--navy)}
+.topbar-right{display:flex;align-items:center;gap:9px}
+.content{padding:18px 22px;flex:1}
+.card{background:var(--card);border-radius:9px;border:1px solid var(--border);padding:16px}
+.card-title{font-size:11.5px;font-weight:700;color:var(--navy);margin-bottom:13px;display:flex;align-items:center;gap:6px;text-transform:uppercase;letter-spacing:.4px}
+.card-title svg{width:14px;height:14px;flex-shrink:0}
+.grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.stat-card{background:var(--card);border-radius:9px;border:1px solid var(--border);padding:14px 16px}
+.stat-label{font-size:10px;font-weight:600;color:var(--slate-light);text-transform:uppercase;letter-spacing:.6px}
+.stat-value{font-size:26px;font-weight:700;color:var(--navy);margin-top:4px;line-height:1}
+.stat-sub{font-size:10.5px;color:var(--slate-light);margin-top:3px}
+.badge{display:inline-flex;align-items:center;padding:2px 7px;border-radius:20px;font-size:10px;font-weight:600;white-space:nowrap}
+.badge-green{background:var(--green-bg);color:var(--green-text)}
+.badge-amber{background:var(--amber-bg);color:var(--amber-text)}
+.badge-red{background:var(--red-bg);color:var(--red-text)}
+.badge-blue{background:#dbeafe;color:#1e40af}
+.badge-purple{background:var(--purple-bg);color:var(--purple-text)}
+.badge-teal{background:var(--teal-bg);color:var(--teal-text)}
+.badge-gray{background:#f1f5f9;color:#475569}
+.badge-navy{background:#e0e7ff;color:#1e1b4b}
+.badge-slate{background:#e2e8f0;color:#334155}
+table{width:100%;border-collapse:collapse;font-size:11.5px}
+th{background:#f8fafc;padding:7px 9px;text-align:left;font-size:10px;font-weight:700;color:var(--slate);border-bottom:2px solid var(--border);white-space:nowrap;letter-spacing:.3px;text-transform:uppercase}
+td{padding:8px 9px;border-bottom:1px solid var(--border);color:#2d3748;vertical-align:middle}
+tr:hover td{background:#fafbff}
+.btn{display:inline-flex;align-items:center;gap:5px;padding:6px 12px;border-radius:6px;font-size:11.5px;font-weight:600;cursor:pointer;border:1px solid transparent;transition:all .15s;line-height:1}
+.btn svg{width:13px;height:13px;flex-shrink:0}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn-primary{background:var(--blue);color:#fff;border-color:var(--blue)}
+.btn-primary:hover:not(:disabled){background:var(--navy)}
+.btn-secondary{background:#fff;color:var(--slate);border-color:var(--border)}
+.btn-secondary:hover:not(:disabled){background:#f8fafc}
+.btn-success{background:var(--green);color:#fff}
+.btn-success:hover:not(:disabled){background:#057a55}
+.btn-teal{background:var(--teal);color:#fff;border-color:var(--teal)}
+.btn-teal:hover:not(:disabled){background:#0e7490}
+.btn-sm{padding:4px 9px;font-size:10.5px}
+.btn-sm svg{width:11px;height:11px}
+.form-group{margin-bottom:13px}
+label{display:block;font-size:11px;font-weight:600;color:var(--slate);margin-bottom:4px;letter-spacing:.2px}
+input,select,textarea{width:100%;padding:7px 9px;border:1px solid var(--border);border-radius:6px;font-size:12.5px;color:#1a1a2e;background:#fff;outline:none;transition:border .15s;font-family:inherit}
+input:focus,select:focus,textarea:focus{border-color:var(--blue-light);box-shadow:0 0 0 2px rgba(61,125,232,.12)}
+textarea{resize:vertical}
+input[disabled],select[disabled],textarea[disabled]{background:#f8fafc;color:#64748b;cursor:not-allowed;border-color:#e2e8f0}
+.field-locked{position:relative}
+.lock-icon{position:absolute;right:9px;top:50%;transform:translateY(-50%);color:var(--slate-light);pointer-events:none}
+.lock-icon svg{width:12px;height:12px}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.form-row-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+.section-gap{margin-bottom:14px}
+.pm-card{background:var(--card);border:1px solid var(--border);border-radius:9px;padding:13px}
+.pm-avatar{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0}
+.progress-bar{height:4px;border-radius:2px;background:#e2e8f0;overflow:hidden;margin-top:4px}
+.progress-fill{height:100%;border-radius:2px;transition:width .3s}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1000;display:flex;align-items:center;justify-content:center;padding:16px}
+.modal{background:#fff;border-radius:10px;width:100%;max-width:700px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.22)}
+.modal-header{padding:16px 18px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:flex-start;position:sticky;top:0;background:#fff;z-index:1}
+.modal-body{padding:18px}
+.urgent-banner{background:#fff5f5;border:1px solid #fca5a5;border-left:4px solid var(--red);border-radius:7px;padding:10px 12px;display:flex;align-items:center;gap:9px;margin-bottom:13px}
+.urgent-banner svg{width:16px;height:16px;flex-shrink:0;color:var(--red)}
+.info-banner{background:#f0f9ff;border:1px solid #bae6fd;border-left:4px solid var(--teal);border-radius:7px;padding:10px 12px;display:flex;align-items:center;gap:9px;margin-bottom:13px;font-size:11.5px;color:var(--teal-text)}
+.info-banner svg{width:15px;height:15px;flex-shrink:0;color:var(--teal)}
+.success-banner{background:#f0fdf4;border:1px solid #bbf7d0;border-left:4px solid var(--green);border-radius:7px;padding:10px 12px;display:flex;align-items:center;gap:9px;margin-bottom:13px;font-size:11.5px;color:var(--green-text)}
+.success-banner svg{width:15px;height:15px;flex-shrink:0}
+.search-bar{position:relative;flex:1;max-width:260px}
+.search-bar input{padding-left:30px;font-size:12px}
+.search-icon{position:absolute;left:9px;top:50%;transform:translateY(-50%);width:13px;height:13px;color:var(--slate-light)}
+.filter-bar{display:flex;gap:7px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+.filter-bar select{width:auto;font-size:11.5px;padding:5px 7px}
+.stage-badge{display:inline-flex;align-items:center;padding:2px 6px;border-radius:4px;font-size:9.5px;font-weight:600;background:#e0e7ff;color:#3730a3;white-space:nowrap}
+.stage-badge.pending{background:#fef9c3;color:#854d0e}
+.stage-badge.closed{background:#dcfce7;color:#14532d}
+.brd-row{display:flex;align-items:center;gap:11px;padding:10px;background:#f8fafc;border-radius:7px;border:1px solid var(--border);margin-bottom:7px}
+.brd-row svg{width:18px;height:18px;flex-shrink:0;color:var(--blue);opacity:.7}
+.brd-info{flex:1}
+.brd-name{font-size:12px;font-weight:600;color:var(--navy)}
+.brd-meta{font-size:10.5px;color:var(--slate-light);margin-top:2px}
+.logic-box{background:#fffbeb;border:1px solid #fde68a;border-left:4px solid var(--amber);border-radius:7px;padding:12px;font-size:11.5px;line-height:1.8;color:#78350f}
+.admin-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border)}
+.admin-row:last-child{border-bottom:none}
+.admin-row label{min-width:190px;margin-bottom:0}
+.admin-row input{width:75px}
+.scroll-table{overflow-x:auto}
+.cr-title-link{color:var(--blue);cursor:pointer;font-weight:600}
+.cr-title-link:hover{text-decoration:underline}
+.alert-info{background:#eff6ff;border:1px solid #bfdbfe;border-left:4px solid var(--blue);border-radius:7px;padding:10px 12px;font-size:11.5px;color:#1e40af;margin-bottom:13px;line-height:1.5}
+.close-btn{width:26px;height:26px;border:1px solid var(--border);border-radius:6px;background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--slate-light);flex-shrink:0}
+.close-btn svg{width:13px;height:13px}
+.close-btn:hover{background:#f8fafc}
+.client-source-tag{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:600;background:#fef9c3;color:#854d0e;border:1px solid #fde68a}
+.signoff-row{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-radius:7px;border:1px solid var(--border);background:#f8fafc;margin-bottom:8px}
+.signoff-label{font-size:12px;font-weight:600;color:var(--navy)}
+.signoff-sub{font-size:10.5px;color:var(--slate-light);margin-top:2px}
+.signoff-done{display:flex;align-items:center;gap:5px;font-size:11.5px;font-weight:600;color:var(--green)}
+.drafting-layout{display:grid;grid-template-columns:1fr 280px;gap:14px;align-items:start}
+.prompt-box{background:#f8fafc;border:1px solid var(--border);border-radius:9px;padding:14px;margin-bottom:14px}
+.prompt-box-title{font-size:10.5px;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:.5px;margin-bottom:9px;display:flex;align-items:center;gap:5px}
+.prompt-box-title svg{width:13px;height:13px;flex-shrink:0}
+.prompt-textarea{width:100%;min-height:100px;padding:9px 11px;border:1px solid var(--border);border-radius:7px;font-size:12.5px;font-family:inherit;line-height:1.6;background:#fff;resize:vertical;color:#1a1a2e;outline:none;transition:border .15s}
+.prompt-textarea:focus{border-color:var(--blue-light);box-shadow:0 0 0 2px rgba(61,125,232,.12)}
+.prompt-chips{display:flex;gap:5px;flex-wrap:wrap;margin-top:7px}
+.prompt-chip{padding:3px 9px;border-radius:20px;font-size:10.5px;font-weight:500;background:#e0e7ff;color:#3730a3;cursor:pointer;border:none;transition:all .15s;font-family:inherit}
+.prompt-chip:hover{background:#c7d2fe}
+.char-count{font-size:10px;color:var(--slate-light);text-align:right;margin-top:3px}
+.draft-output{background:#fff;border:1px solid var(--border);border-radius:9px;overflow:hidden}
+.draft-output-header{padding:9px 12px;background:#f8fafc;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.draft-output-header-left{font-size:11.5px;font-weight:700;color:var(--navy);display:flex;align-items:center;gap:5px}
+.draft-output-header-left svg{width:13px;height:13px;flex-shrink:0}
+.draft-output-actions{display:flex;gap:5px}
+.draft-textarea{width:100%;min-height:340px;padding:14px;border:none;font-size:12px;font-family:'Courier New',monospace;line-height:1.7;background:#fff;resize:vertical;color:#1a1a2e;outline:none;display:block}
+.generating-overlay{min-height:340px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;background:#fafcff;color:var(--slate-light);font-size:12.5px}
+.spinner{width:22px;height:22px;border:2px solid var(--border);border-top-color:var(--blue);border-radius:50%;animation:spin .7s linear infinite;flex-shrink:0}
+@keyframes spin{to{transform:rotate(360deg)}}
+.ver-panel{background:var(--card);border:1px solid var(--border);border-radius:9px;padding:13px}
+.ver-panel-title{font-size:10.5px;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:.5px;margin-bottom:11px;display:flex;align-items:center;gap:5px}
+.ver-panel-title svg{width:13px;height:13px;flex-shrink:0}
+.ver-count{background:var(--blue);color:#fff;border-radius:20px;padding:1px 6px;font-size:9.5px;font-weight:700;margin-left:auto}
+.ver-item{padding:9px 10px;border-radius:7px;border:1px solid var(--border);margin-bottom:7px;cursor:pointer;transition:all .15s;background:#fff}
+.ver-item:hover{border-color:var(--blue-light);background:#f0f7ff}
+.ver-item.active-ver{border-color:var(--blue);background:#eff6ff}
+.ver-item-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:3px}
+.ver-num{font-size:10.5px;font-weight:700;color:var(--blue)}
+.ver-time{font-size:9.5px;color:var(--slate-light)}
+.ver-meta{font-size:10.5px;color:var(--slate);margin-bottom:3px}
+.ver-prompt{font-size:10.5px;color:var(--slate-light);font-style:italic;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ver-actions{display:flex;gap:4px;margin-top:7px}
+.empty-state{text-align:center;padding:28px 14px;color:var(--slate-light);font-size:11.5px;line-height:1.6}
+.diff-badge{display:inline-flex;align-items:center;gap:3px;padding:2px 6px;border-radius:4px;font-size:9.5px;font-weight:600;background:#f0f7ff;color:var(--blue);border:1px solid #bfdbfe}
+.diff-badge svg{width:10px;height:10px;flex-shrink:0}
+.cr-context{display:flex;align-items:center;gap:7px;flex-wrap:wrap;padding:7px 11px;background:#f8fafc;border:1px solid var(--border);border-radius:7px;font-size:11.5px}
+.setup-card{background:var(--card);border-radius:9px;border:1px solid var(--border);padding:16px;margin-bottom:14px}
+.error-box{margin-top:9px;padding:7px 11px;background:#fff5f5;border:1px solid #fca5a5;border-radius:5px;font-size:11.5px;color:var(--red-text)}
+.chart-wrap{width:100%;overflow:hidden}
+.grid-line{stroke:#e2e8f0;stroke-width:.5;stroke-dasharray:3 3}
+.axis-line{stroke:#cbd5e0;stroke-width:1}
+/* CR detail */
+.cr-detail-page{max-width:900px}
+.field-section{background:var(--card);border:1px solid var(--border);border-radius:9px;padding:16px;margin-bottom:14px}
+.field-section-title{font-size:11px;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:.5px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between}
+.locked-badge{display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:600;color:var(--slate-light);background:#f1f5f9;border:1px solid var(--border);border-radius:4px;padding:2px 7px}
+.locked-badge svg{width:11px;height:11px}
+.workflow-stepper{display:flex;align-items:center;gap:0;margin-bottom:18px;overflow-x:auto;padding-bottom:4px}
+.step-node{padding:5px 11px;border-radius:20px;font-size:9.5px;font-weight:700;white-space:nowrap;border:1.5px solid var(--border);background:#fff;color:var(--slate-light);flex-shrink:0}
+.step-node.done{background:var(--green-bg);border-color:var(--green);color:var(--green-text)}
+.step-node.active{background:#dbeafe;border-color:var(--blue);color:#1e40af}
+.step-arrow{width:18px;height:1.5px;background:var(--border);flex-shrink:0}
+/* Estimation panel */
+.est-panel{background:linear-gradient(135deg,#f0f7ff 0%,#fafbff 100%);border:1.5px solid #bfdbfe;border-radius:10px;padding:18px;margin-bottom:14px}
+.est-panel-title{font-size:11px;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:.5px;margin-bottom:14px;display:flex;align-items:center;gap:6px}
+.est-panel-title svg{width:14px;height:14px;flex-shrink:0}
+.est-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:14px}
+.est-box{background:#fff;border:1px solid var(--border);border-radius:8px;padding:12px;text-align:center}
+.est-box-label{font-size:9.5px;font-weight:700;color:var(--slate-light);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+.est-box-value{font-size:22px;font-weight:700;color:var(--navy);line-height:1}
+.est-box-unit{font-size:11px;color:var(--slate-light);margin-top:2px}
+.est-box.highlight{border-color:var(--blue-light);background:#eff6ff}
+.est-box.highlight .est-box-value{color:var(--blue)}
+.score-bar{height:8px;border-radius:4px;background:#e2e8f0;overflow:hidden;margin-bottom:14px}
+.score-fill{height:100%;border-radius:4px;transition:width .5s;background:var(--blue)}
+.breakdown-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px}
+.breakdown-item{background:#fff;border:1px solid var(--border);border-radius:7px;padding:9px 10px;display:flex;flex-direction:column;gap:3px}
+.breakdown-item-label{font-size:9.5px;font-weight:600;color:var(--slate-light);text-transform:uppercase;letter-spacing:.4px}
+.breakdown-item-value{font-size:12.5px;font-weight:700;color:var(--navy)}
+.breakdown-item-score{font-size:10.5px;color:var(--slate-light)}
+.est-not-ready{background:#f8fafc;border:1.5px dashed var(--border);border-radius:10px;padding:24px;text-align:center;color:var(--slate-light);font-size:12.5px;margin-bottom:14px}
+.est-not-ready svg{width:28px;height:28px;margin-bottom:8px;opacity:.35;display:block;margin-left:auto;margin-right:auto}
+.urgent-est-tag{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:20px;background:var(--red-bg);color:var(--red-text);font-size:10.5px;font-weight:700;border:1px solid #fca5a5;margin-left:8px}
+.role-restricted{background:#fff7ed;border:1px solid #fed7aa;border-radius:7px;padding:10px 14px;font-size:11.5px;color:#9a3412;display:flex;align-items:center;gap:8px}
+.role-restricted svg{width:15px;height:15px;flex-shrink:0}
+</style>
+</head>
+<body><div id="root"></div>
+<script>
+const {useState,useEffect}=React,R=React;
+function h(t,p,...c){return R.createElement(t,p,...c);}
+
+function mkIc(children){return(cls,w=13,hh=13)=>R.createElement('svg',{className:cls,viewBox:'0 0 16 16',fill:'none',stroke:'currentColor',strokeWidth:1.5,strokeLinecap:'round',strokeLinejoin:'round',width:w,height:hh,style:{flexShrink:0}},...children);}
+const Ic={
+  dashboard:mkIc([h('rect',{key:0,x:1,y:1,width:6,height:6,rx:1}),h('rect',{key:1,x:9,y:1,width:6,height:6,rx:1}),h('rect',{key:2,x:1,y:9,width:6,height:6,rx:1}),h('rect',{key:3,x:9,y:9,width:6,height:6,rx:1})]),
+  plus:mkIc([h('line',{key:0,x1:8,y1:2,x2:8,y2:14}),h('line',{key:1,x1:2,y1:8,x2:14,y2:8})]),
+  list:mkIc([h('line',{key:0,x1:2,y1:4,x2:14,y2:4}),h('line',{key:1,x1:2,y1:8,x2:14,y2:8}),h('line',{key:2,x1:2,y1:12,x2:14,y2:12})]),
+  folder:mkIc([h('path',{key:0,d:'M1 4a1 1 0 011-1h4l1.5 2H14a1 1 0 011 1v7a1 1 0 01-1 1H2a1 1 0 01-1-1V4z'})]),
+  doc:mkIc([h('path',{key:0,d:'M9 1H3a1 1 0 00-1 1v12a1 1 0 001 1h10a1 1 0 001-1V6L9 1z'}),h('polyline',{key:1,points:'9 1 9 6 14 6'}),h('line',{key:2,x1:5,y1:9,x2:11,y2:9}),h('line',{key:3,x1:5,y1:12,x2:9,y2:12})]),
+  settings:mkIc([h('circle',{key:0,cx:8,cy:8,r:2}),h('path',{key:1,d:'M8 1v2M8 13v2M1 8h2M13 8h2M3.05 3.05l1.41 1.41M11.54 11.54l1.41 1.41M3.05 12.95l1.41-1.41M11.54 4.46l1.41-1.41'})]),
+  users:mkIc([h('path',{key:0,d:'M11 14v-1a3 3 0 00-3-3H5a3 3 0 00-3 3v1'}),h('circle',{key:1,cx:6.5,cy:5,r:2.5}),h('path',{key:2,d:'M13 14v-1a3 3 0 00-2-2.83M10 2.17a2.5 2.5 0 010 4.66'})]),
+  alert:mkIc([h('path',{key:0,d:'M8 1L1 14h14L8 1z'}),h('line',{key:1,x1:8,y1:6,x2:8,y2:9}),h('line',{key:2,x1:8,y1:11,x2:8.01,y2:11})]),
+  check:mkIc([h('polyline',{key:0,points:'2 8 6 12 14 4'})]),
+  clock:mkIc([h('circle',{key:0,cx:8,cy:8,r:7}),h('polyline',{key:1,points:'8 4 8 8 10 10'})]),
+  trend:mkIc([h('polyline',{key:0,points:'1 11 5 6 9 8 15 3'}),h('polyline',{key:1,points:'11 3 15 3 15 7'})]),
+  search:mkIc([h('circle',{key:0,cx:6.5,cy:6.5,r:5}),h('line',{key:1,x1:10.5,y1:10.5,x2:14,y2:14})]),
+  file:mkIc([h('path',{key:0,d:'M9 1H3a1 1 0 00-1 1v12a1 1 0 001 1h10a1 1 0 001-1V6L9 1z'}),h('polyline',{key:1,points:'9 1 9 6 14 6'})]),
+  download:mkIc([h('line',{key:0,x1:8,y1:2,x2:8,y2:11}),h('polyline',{key:1,points:'4 8 8 12 12 8'}),h('line',{key:2,x1:2,y1:14,x2:14,y2:14})]),
+  eye:mkIc([h('path',{key:0,d:'M1 8s2.5-5 7-5 7 5 7 5-2.5 5-7 5-7-5-7-5z'}),h('circle',{key:1,cx:8,cy:8,r:2})]),
+  pencil:mkIc([h('path',{key:0,d:'M11.5 2.5a2.12 2.12 0 013 3L5 15H2v-3L11.5 2.5z'})]),
+  save:mkIc([h('path',{key:0,d:'M13 14H3a1 1 0 01-1-1V3a1 1 0 011-1h8l3 3v9a1 1 0 01-1 1z'}),h('polyline',{key:1,points:'5 14 5 9 11 9 11 14'}),h('polyline',{key:2,points:'5 2 5 5 10 5'})]),
+  close:mkIc([h('line',{key:0,x1:3,y1:3,x2:13,y2:13}),h('line',{key:1,x1:13,y1:3,x2:3,y2:13})]),
+  bolt:mkIc([h('polygon',{key:0,points:'9 1 3 9 8 9 7 15 13 7 8 7 9 1'})]),
+  history:mkIc([h('path',{key:0,d:'M1 8a7 7 0 107-.5'}),h('polyline',{key:1,points:'1 3 1 8 6 8'}),h('polyline',{key:2,points:'8 5 8 8 10 10'})]),
+  sparkle:mkIc([h('path',{key:0,d:'M8 1v3M8 12v3M1 8h3M12 8h3M3.5 3.5l2 2M10.5 10.5l2 2M10.5 3.5l-2 2M5.5 10.5l-2 2'}),h('circle',{key:1,cx:8,cy:8,r:2})]),
+  restore:mkIc([h('polyline',{key:0,points:'1 4 1 9 6 9'}),h('path',{key:1,d:'M1 9a7 7 0 100 0'})]),
+  copy:mkIc([h('rect',{key:0,x:5,y:5,width:9,height:9,rx:1}),h('path',{key:1,d:'M11 5V3a1 1 0 00-1-1H3a1 1 0 00-1 1v7a1 1 0 001 1h2'})]),
+  chart:mkIc([h('rect',{key:0,x:1,y:9,width:3,height:6,rx:.5}),h('rect',{key:1,x:6,y:5,width:3,height:10,rx:.5}),h('rect',{key:2,x:11,y:2,width:3,height:13,rx:.5})]),
+  lock:mkIc([h('rect',{key:0,x:3,y:7,width:10,height:8,rx:1}),h('path',{key:1,d:'M5 7V5a3 3 0 016 0v2'})]),
+  unlock:mkIc([h('rect',{key:0,x:3,y:7,width:10,height:8,rx:1}),h('path',{key:1,d:'M5 7V5a3 3 0 015.9-.5'})]),
+  user:mkIc([h('circle',{key:0,cx:8,cy:6,r:3}),h('path',{key:1,d:'M2 14a6 6 0 0112 0'})]),
+  globe:mkIc([h('circle',{key:0,cx:8,cy:8,r:7}),h('path',{key:1,d:'M1 8h14M8 1a11 11 0 000 14M8 1a11 11 0 010 14'})]),
+  arrowLeft:mkIc([h('line',{key:0,x1:14,y1:8,x2:2,y2:8}),h('polyline',{key:1,points:'7 3 2 8 7 13'})]),
+  info:mkIc([h('circle',{key:0,cx:8,cy:8,r:7}),h('line',{key:1,x1:8,y1:11,x2:8,y2:8}),h('line',{key:2,x1:8,y1:5,x2:8.01,y2:5})]),
+  shield:mkIc([h('path',{key:0,d:'M8 1L2 4v4c0 3.5 2.5 6.5 6 7 3.5-.5 6-3.5 6-7V4L8 1z'})]),
+  calculator:mkIc([h('rect',{key:0,x:2,y:2,width:12,height:12,rx:1}),h('line',{key:1,x1:5,y1:6,x2:11,y2:6}),h('line',{key:2,x1:5,y1:9,x2:7,y2:9}),h('line',{key:3,x1:9,y1:9,x2:11,y2:9}),h('line',{key:4,x1:5,y1:12,x2:7,y2:12}),h('line',{key:5,x1:9,y1:12,x2:11,y2:12})]),
+};
+
+const STAGES=['PM Assignment Pending','BRD Approved','RS Drafting','RS Sent for Internal Review','RS Sent to Client Review','RS Approved','FS Drafting','FS Sent for Internal Review','FS Sent to Client Review','FS Approved','HLE in Progress','Closed'];
+const PM_STAGES=STAGES.filter(s=>s!=='PM Assignment Pending');
+const STATUSES=['Pending Assignment','Raised','In Review','Approved','In Progress','Closed'];
+const ROLES=['PM','Product Engineer','Admin'];
+const PM_LIST=[
+  {id:'pm1',name:'Aisha Rahman',email:'aisha@company.com',initials:'AR',color:'#1e5fc2'},
+  {id:'pm2',name:'Marcus Chen',email:'marcus@company.com',initials:'MC',color:'#0d9e6e'},
+  {id:'pm3',name:'Priya Sharma',email:'priya@company.com',initials:'PS',color:'#7c3aed'},
+  {id:'pm4',name:'James Okafor',email:'james@company.com',initials:'JO',color:'#d97706'},
+  {id:'pm5',name:'Sofia Mendez',email:'sofia@company.com',initials:'SM',color:'#dc2626'},
+];
+
+function dFN(n){const d=new Date();d.setDate(d.getDate()+n);return d.toISOString().slice(0,10);}
+function dAgo(n){const d=new Date();d.setDate(d.getDate()-n);return d.toISOString().slice(0,10);}
+
+const INIT_CRS=[
+  {id:'CR-001',title:'Customer Portal Redesign',client:'AlphaBank',assignedPm:'pm1',complexity:'High',businessImpact:'High',urgency:'High',hleSize:'XL',currentStage:'RS Drafting',stageStartDate:dAgo(3),stageDueDate:dFN(3),status:'In Progress',estimatedCompletionDate:dFN(18),createdAt:dAgo(10),score:13,band:'High',rsDays:6,fsDays:8,hleDays:3,brdDays:6,description:'Full redesign of customer-facing portal including new onboarding flows and dashboards.',source:'internal',rsSignedOff:false,fsSignedOff:false,rsDrafted:false,fsDrafted:false,fsFinalised:false},
+  {id:'CR-002',title:'Payment Gateway Integration',client:'FinTechCorp',assignedPm:'pm1',complexity:'High',businessImpact:'High',urgency:'Medium',hleSize:'L',currentStage:'FS Drafting',stageStartDate:dAgo(5),stageDueDate:dFN(3),status:'In Progress',estimatedCompletionDate:dFN(8),createdAt:dAgo(20),score:11,band:'High',rsDays:6,fsDays:8,hleDays:3,brdDays:6,description:'Integration with Stripe and local payment providers.',source:'internal',rsSignedOff:false,fsSignedOff:false,rsDrafted:false,fsDrafted:false,fsFinalised:false},
+  {id:'CR-003',title:'KYC Module Enhancement',client:'AlphaBank',assignedPm:'pm2',complexity:'Medium',businessImpact:'High',urgency:'High',hleSize:'M',currentStage:'RS Sent to Client Review',stageStartDate:dAgo(2),stageDueDate:dFN(5),status:'In Review',estimatedCompletionDate:dFN(12),createdAt:dAgo(15),score:9,band:'High',rsDays:6,fsDays:8,hleDays:3,brdDays:6,description:'',source:'internal',rsSignedOff:false,fsSignedOff:false,rsDrafted:true,fsDrafted:false,fsFinalised:false},
+  {id:'CR-004',title:'Report Dashboard Upgrade',client:'RetailMax',assignedPm:'pm2',complexity:'Medium',businessImpact:'Medium',urgency:'Low',hleSize:'M',currentStage:'BRD Approved',stageStartDate:dAgo(1),stageDueDate:dFN(4),status:'Raised',estimatedCompletionDate:dFN(22),createdAt:dAgo(3),score:6,band:'Medium',rsDays:4,fsDays:5,hleDays:2,brdDays:4,description:'',source:'internal',rsSignedOff:false,fsSignedOff:false,rsDrafted:false,fsDrafted:false,fsFinalised:false},
+  {id:'CR-005',title:'Email Notification System',client:'TechStart Ltd',assignedPm:'pm3',complexity:'Low',businessImpact:'Low',urgency:'Low',hleSize:'S',currentStage:'FS Approved',stageStartDate:dAgo(4),stageDueDate:dFN(1),status:'In Progress',estimatedCompletionDate:dFN(2),createdAt:dAgo(30),score:4,band:'Low',rsDays:2,fsDays:3,hleDays:1,brdDays:2,description:'',source:'internal',rsSignedOff:true,fsSignedOff:false,rsDrafted:true,fsDrafted:true,fsFinalised:true},
+  {id:'CR-006',title:'Audit Trail Implementation',client:'FinTechCorp',assignedPm:'pm3',complexity:'Medium',businessImpact:'Medium',urgency:'Medium',hleSize:'M',currentStage:'RS Approved',stageStartDate:dAgo(2),stageDueDate:dFN(2),status:'In Progress',estimatedCompletionDate:dFN(10),createdAt:dAgo(18),score:8,band:'Medium',rsDays:4,fsDays:5,hleDays:2,brdDays:4,description:'',source:'internal',rsSignedOff:true,fsSignedOff:false,rsDrafted:true,fsDrafted:false,fsFinalised:false},
+  {id:'CR-007',title:'Multi-Currency Support',client:'GlobalTrade',assignedPm:'pm4',complexity:'High',businessImpact:'High',urgency:'High',hleSize:'XL',currentStage:'RS Drafting',stageStartDate:dAgo(1),stageDueDate:dFN(5),status:'In Progress',estimatedCompletionDate:dFN(25),createdAt:dAgo(5),score:13,band:'High',rsDays:6,fsDays:8,hleDays:3,brdDays:6,description:'',source:'internal',rsSignedOff:false,fsSignedOff:false,rsDrafted:false,fsDrafted:false,fsFinalised:false},
+  {id:'CR-008',title:'User Role Management',client:'RetailMax',assignedPm:'pm5',complexity:'Medium',businessImpact:'Medium',urgency:'Medium',hleSize:'M',currentStage:'HLE in Progress',stageStartDate:dAgo(2),stageDueDate:dFN(1),status:'In Progress',estimatedCompletionDate:dFN(2),createdAt:dAgo(22),score:7,band:'Medium',rsDays:4,fsDays:5,hleDays:2,brdDays:4,description:'',source:'internal',rsSignedOff:true,fsSignedOff:true,rsDrafted:true,fsDrafted:true,fsFinalised:true},
+  {id:'CR-C01',title:'Loan Application Workflow Revamp',client:'AlphaBank',assignedPm:'',complexity:'',businessImpact:'High',urgency:'High',hleSize:'',currentStage:'PM Assignment Pending',stageStartDate:dAgo(1),stageDueDate:'',status:'Pending Assignment',estimatedCompletionDate:'',createdAt:dAgo(1),score:0,band:'',rsDays:0,fsDays:0,hleDays:0,brdDays:0,description:'Revamp the loan application workflow to reduce steps from 12 to 5, with real-time credit scoring integration.',source:'client',rsSignedOff:false,fsSignedOff:false,rsDrafted:false,fsDrafted:false,fsFinalised:false},
+  {id:'CR-C02',title:'Mobile Dashboard for Retail Analytics',client:'RetailMax',assignedPm:'',complexity:'',businessImpact:'Medium',urgency:'Medium',hleSize:'',currentStage:'PM Assignment Pending',stageStartDate:dAgo(3),stageDueDate:'',status:'Pending Assignment',estimatedCompletionDate:'',createdAt:dAgo(3),score:0,band:'',rsDays:0,fsDays:0,hleDays:0,brdDays:0,description:'Mobile-first analytics dashboard for store managers to view real-time sales and inventory data.',source:'client',rsSignedOff:false,fsSignedOff:false,rsDrafted:false,fsDrafted:false,fsFinalised:false},
+];
+const INIT_BRDS=[
+  {id:'brd1',crId:'CR-001',fileName:'CR001_CustomerPortal_BRD_v2.pdf',uploadedAt:dAgo(12),size:'1.4 MB'},
+  {id:'brd2',crId:'CR-002',fileName:'CR002_PaymentGateway_BRD_Final.pdf',uploadedAt:dAgo(21),size:'2.1 MB'},
+  {id:'brd3',crId:'CR-003',fileName:'CR003_KYC_Enhancement_BRD.pdf',uploadedAt:dAgo(16),size:'890 KB'},
+];
+const INIT_SET={score_low_min:4,score_low_max:5,score_med_min:6,score_med_max:8,score_high_min:9,score_high_max:13,low_brd:2,low_rs:2,low_fs:3,low_hle:1,med_brd:4,med_rs:4,med_fs:5,med_hle:2,high_brd:6,high_rs:6,high_fs:8,high_hle:3};
+
+/* ENGINE */
+function calcScore(c,b,u,hs){const cm={Low:1,Medium:2,High:3},hm={S:1,M:2,L:3,XL:4};return(cm[c]||0)+(cm[b]||0)+(cm[u]||0)+(hm[hs]||0);}
+function getBand(s,cfg){if(s>=cfg.score_low_min&&s<=cfg.score_low_max)return'Low';if(s>=cfg.score_med_min&&s<=cfg.score_med_max)return'Medium';return'High';}
+function getEst(band,cfg){if(band==='Low')return{brdDays:cfg.low_brd,rsDays:cfg.low_rs,fsDays:cfg.low_fs,hleDays:cfg.low_hle};if(band==='High')return{brdDays:cfg.high_brd,rsDays:cfg.high_rs,fsDays:cfg.high_fs,hleDays:cfg.high_hle};return{brdDays:cfg.med_brd,rsDays:cfg.med_rs,fsDays:cfg.med_fs,hleDays:cfg.med_hle};}
+function logicTxt(c,b,u,hs,score,band,est){const cm={Low:1,Medium:2,High:3},hm={S:1,M:2,L:3,XL:4};return`Score breakdown: Complexity (${c}) = ${cm[c]}, Business Impact (${b}) = ${cm[b]}, Urgency (${u}) = ${cm[u]}, HLE Size (${hs}) = ${hm[hs]}. Total score = ${score}, which maps to the ${band} estimation band (${band==='Low'?'4–5':band==='Medium'?'6–8':'9–13'}). Applied timeline estimates: BRD Finalisation ${est.brdDays}d · RS Drafting ${est.rsDays}d · FS Drafting ${est.fsDays}d · HLE Turnaround ${est.hleDays}d.`;}
+
+/* HELPERS */
+function getPM(id){return PM_LIST.find(p=>p.id===id)||{name:'Unassigned',initials:'?',color:'#999'};}
+function activeCRs(crs,pmId){return crs.filter(c=>c.assignedPm===pmId&&!['Closed'].includes(c.status));}
+function pmAvail(crs,pmId){const a=activeCRs(crs,pmId);if(!a.length)return{label:'Available Now'};const l=a.reduce((acc,c)=>c.estimatedCompletionDate>acc?c.estimatedCompletionDate:acc,'');return{label:l,date:l};}
+function wlSt(crs,pmId){const n=activeCRs(crs,pmId).length;if(n===0)return{label:'Available',cls:'badge-green'};if(n===1)return{label:'Light',cls:'badge-green'};if(n===2)return{label:'Medium',cls:'badge-amber'};return{label:'Heavy',cls:'badge-red'};}
+function sbCls(s){if(s==='Closed')return'badge-green';if(s==='In Progress')return'badge-blue';if(s==='In Review')return'badge-amber';if(s==='Approved')return'badge-purple';if(s==='Pending Assignment')return'badge-amber';return'badge-gray';}
+function bbCls(b){if(b==='Low')return'badge-green';if(b==='High')return'badge-red';return'badge-amber';}
+function fD(d){if(!d||d==='Available Now')return d||'—';try{return new Date(d).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});}catch{return d;}}
+function fDT(iso){if(!iso)return'';const d=new Date(iso);return d.toLocaleDateString('en-GB',{day:'2-digit',month:'short'})+' '+d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});}
+function genId(ex){const ns=ex.map(c=>{const n=parseInt(c.id.replace('CR-',''));return isNaN(n)?0:n;});return'CR-'+String(Math.max(0,...ns)+1).padStart(3,'0');}
+function canClose(cr){return cr.rsSignedOff&&cr.fsSignedOff&&cr.fsFinalised;}
+
+/* CHART */
+function ClientCrChart({crs}){
+  const active=crs.filter(c=>!['Closed','Pending Assignment'].includes(c.status));
+  const map={};active.forEach(c=>{if(!map[c.client])map[c.client]={ip:0,ir:0};if(['In Progress','Raised','Approved'].includes(c.status))map[c.client].ip++;if(c.status==='In Review')map[c.client].ir++;});
+  const clients=Object.keys(map).sort();const maxV=Math.max(1,...clients.map(c=>Math.max(map[c].ip,map[c].ir)));
+  const pL=44,pR=12,pT=24,pB=46,W=500,H=190,cW=W-pL-pR,cH=H-pT-pB;
+  const n=clients.length,gW=Math.floor(cW/Math.max(n,1)),bW=Math.min(20,Math.floor(gW*0.28)),gap=3;
+  const yS=v=>cH-(v/maxV)*cH;const ticks=Array.from({length:maxV+1},(_,i)=>i);
+  return h('div',{className:'chart-wrap'},h('svg',{width:'100%',viewBox:`0 0 ${W} ${H}`,role:'img'},
+    ticks.map(t=>h('line',{key:t,x1:pL,y1:pT+yS(t),x2:W-pR,y2:pT+yS(t),className:'grid-line'})),
+    h('line',{x1:pL,y1:pT,x2:pL,y2:pT+cH,className:'axis-line'}),h('line',{x1:pL,y1:pT+cH,x2:W-pR,y2:pT+cH,className:'axis-line'}),
+    ticks.map(t=>h('text',{key:t,x:pL-5,y:pT+yS(t)+4,textAnchor:'end',fontSize:9,fill:'#718096'},t)),
+    clients.map((cl,i)=>{const cx=pL+(i+0.5)*gW,ip=map[cl].ip,ir=map[cl].ir,ipH=ip>0?(ip/maxV)*cH:0,irH=ir>0?(ir/maxV)*cH:0,ipX=cx-bW-gap/2,irX=cx+gap/2;return h('g',{key:cl},ip>0&&h('rect',{x:ipX,y:pT+cH-ipH,width:bW,height:ipH,rx:3,fill:'#1e5fc2'}),ip>0&&h('text',{x:ipX+bW/2,y:pT+cH-ipH-4,textAnchor:'middle',fontSize:9,fontWeight:600,fill:'#1e5fc2'},ip),ir>0&&h('rect',{x:irX,y:pT+cH-irH,width:bW,height:irH,rx:3,fill:'#0d9e6e'}),ir>0&&h('text',{x:irX+bW/2,y:pT+cH-irH-4,textAnchor:'middle',fontSize:9,fontWeight:600,fill:'#0d9e6e'},ir),h('text',{x:cx,y:pT+cH+13,textAnchor:'middle',fontSize:9,fill:'#4a5568'},cl.length>10?cl.slice(0,9)+'…':cl));}),
+    h('rect',{x:pL,y:H-12,width:9,height:9,rx:2,fill:'#1e5fc2'}),h('text',{x:pL+12,y:H-4,fontSize:9,fill:'#4a5568'},'In Progress (NETSOL)'),
+    h('rect',{x:pL+130,y:H-12,width:9,height:9,rx:2,fill:'#0d9e6e'}),h('text',{x:pL+142,y:H-4,fontSize:9,fill:'#4a5568'},'In Client Review'),
+  ));
+}
+
+async function callClaude(system,user){
+  const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,system,messages:[{role:'user',content:user}]})});
+  const d=await r.json();if(d.error)throw new Error(d.error.message);
+  return d.content.map(b=>b.text||'').join('');
+}
+
+/* ── ESTIMATION PANEL ── */
+function EstimationPanel({complexity,businessImpact,urgency,hleSize,settings,existing}){
+  const allReady=complexity&&businessImpact&&urgency&&hleSize;
+  if(!allReady){
+    return h('div',{className:'est-not-ready'},
+      Ic.calculator(null,28,28),
+      h('div',{style:{fontWeight:600,marginBottom:4,marginTop:4}},'Estimation not yet generated'),
+      h('div',{style:{fontSize:11.5}},'Fill in Complexity and HLE Size — the estimation will calculate automatically.')
+    );
+  }
+  const score=calcScore(complexity,businessImpact,urgency,hleSize);
+  const maxScore=13;
+  const band=getBand(score,settings);
+  const est=getEst(band,settings);
+  const logic=logicTxt(complexity,businessImpact,urgency,hleSize,score,band,est);
+  const urgent=urgency==='High';
+  const cm={Low:1,Medium:2,High:3},hm={S:1,M:2,L:3,XL:4};
+  const bandColor={Low:'var(--green)',Medium:'var(--amber)',High:'var(--red)'};
+  const scoreBarColor=band==='Low'?'#0d9e6e':band==='High'?'#dc2626':'#d97706';
+  const totalDays=est.brdDays+est.rsDays+est.fsDays+est.hleDays;
+  const changed=existing&&(existing.score!==score||existing.band!==band);
+  return h('div',{className:'est-panel'},
+    h('div',{className:'est-panel-title'},
+      Ic.calculator(null,14,14),'Estimation Result',
+      urgent&&h('span',{className:'urgent-est-tag'},Ic.alert(null,11,11),'URGENT'),
+      changed&&h('span',{style:{fontSize:10,fontWeight:600,color:'var(--amber)',marginLeft:8,background:'var(--amber-bg)',padding:'2px 8px',borderRadius:20}},'Updated — save to apply'),
+    ),
+    h('div',{style:{marginBottom:14}},
+      h('div',{style:{display:'flex',justifyContent:'space-between',fontSize:11,marginBottom:5}},
+        h('span',{style:{fontWeight:600,color:'var(--slate-light)'}},'Total Score'),
+        h('span',{style:{fontWeight:700,color:scoreBarColor,fontSize:16}},score,' / '+maxScore+' pts')
+      ),
+      h('div',{className:'score-bar'},h('div',{className:'score-fill',style:{width:(score/maxScore*100)+'%',background:scoreBarColor}})),
+      h('div',{style:{display:'flex',justifyContent:'space-between',fontSize:10,color:'var(--slate-light)',marginTop:3}},
+        h('span','Low (4–5)'),h('span','Medium (6–8)'),h('span','High (9–13)')
+      )
+    ),
+    h('div',{className:'est-grid'},
+      h('div',{className:'est-box highlight'},h('div',{className:'est-box-label'},'Band'),h('div',{className:'est-box-value',style:{color:bandColor[band],fontSize:18}},band),h('div',{className:'est-box-unit'},'estimation band')),
+      h('div',{className:'est-box'},h('div',{className:'est-box-label'},'BRD Finalisation'),h('div',{className:'est-box-value'},est.brdDays),h('div',{className:'est-box-unit'},'days')),
+      h('div',{className:'est-box'},h('div',{className:'est-box-label'},'RS Drafting'),h('div',{className:'est-box-value'},est.rsDays),h('div',{className:'est-box-unit'},'days')),
+      h('div',{className:'est-box'},h('div',{className:'est-box-label'},'FS Drafting'),h('div',{className:'est-box-value'},est.fsDays),h('div',{className:'est-box-unit'},'days')),
+      h('div',{className:'est-box'},h('div',{className:'est-box-label'},'HLE Turnaround'),h('div',{className:'est-box-value'},est.hleDays),h('div',{className:'est-box-unit'},'days')),
+    ),
+    h('div',{style:{marginBottom:14}},
+      h('div',{style:{fontSize:10,fontWeight:700,color:'var(--slate-light)',textTransform:'uppercase',letterSpacing:'.5px',marginBottom:7}},'Score Breakdown'),
+      h('div',{className:'breakdown-grid'},
+        h('div',{className:'breakdown-item'},h('span',{className:'breakdown-item-label'},'Complexity'),h('span',{className:'breakdown-item-value'},complexity),h('span',{className:'breakdown-item-score'},cm[complexity]+' pt'+(cm[complexity]!==1?'s':''))),
+        h('div',{className:'breakdown-item'},h('span',{className:'breakdown-item-label'},'Business Impact'),h('span',{className:'breakdown-item-value'},businessImpact),h('span',{className:'breakdown-item-score'},cm[businessImpact]+' pt'+(cm[businessImpact]!==1?'s':''))),
+        h('div',{className:'breakdown-item'},h('span',{className:'breakdown-item-label'},'Urgency'),h('span',{className:'breakdown-item-value'},urgency),h('span',{className:'breakdown-item-score'},cm[urgency]+' pt'+(cm[urgency]!==1?'s':''))),
+        h('div',{className:'breakdown-item'},h('span',{className:'breakdown-item-label'},'HLE Size'),h('span',{className:'breakdown-item-value'},hleSize),h('span',{className:'breakdown-item-score'},hm[hleSize]+' pt'+(hm[hleSize]!==1?'s':''))),
+      )
+    ),
+    h('div',{className:'logic-box'},
+      h('div',{style:{fontWeight:700,marginBottom:5,fontSize:10,textTransform:'uppercase',letterSpacing:'.4px'}},'Logic Explanation'),
+      logic
+    ),
+    totalDays>0&&h('div',{style:{marginTop:12,padding:'10px 14px',background:'#fff',border:'1px solid var(--border)',borderRadius:7,display:'flex',gap:20}},
+      h('div',null,h('div',{style:{fontSize:9.5,color:'var(--slate-light)',textTransform:'uppercase',letterSpacing:'.4px'}},'Total Duration'),h('div',{style:{fontSize:15,fontWeight:700,color:'var(--navy)',marginTop:2}},totalDays+' working days')),
+      h('div',null,h('div',{style:{fontSize:9.5,color:'var(--slate-light)',textTransform:'uppercase',letterSpacing:'.4px'}},'Est. Completion'),h('div',{style:{fontSize:15,fontWeight:700,color:'var(--navy)',marginTop:2}},fD(dFN(totalDays)))),
+    )
+  );
+}
+
+/* APP */
+function App(){
+  const[user,setUser]=useState(null);
+  const[page,setPage]=useState('dashboard');
+  const[crs,setCrs]=useState(INIT_CRS);
+  const[brds,setBrds]=useState(INIT_BRDS);
+  const[settings,setSettings]=useState(INIT_SET);
+  const[drafts,setDrafts]=useState([]);
+  const[detailCr,setDetailCr]=useState(null);
+  const[pmModal,setPmModal]=useState(null);
+  const[crResult,setCrResult]=useState(null);
+  const[aiCr,setAiCr]=useState(null);
+  if(!user)return h(Login,{onLogin:setUser});
+
+  // Single navigation function used by both render branches — always clears detail view
+  function navigate(p){setDetailCr(null);setPage(p);}
+
+  if(detailCr){
+    const live=crs.find(c=>c.id===detailCr.id)||detailCr;
+    return h('div',{className:'app'},
+      h(Sidebar,{page,setPage:navigate,user}),
+      h('div',{className:'main'},
+        h(Topbar,{page,user,onNew:()=>{setCrResult(null);setDetailCr(null);navigate('new-cr');}}),
+        h('div',{className:'content'},h(CrDetailPage,{cr:live,crs,setCrs,user,settings,onBack:()=>setDetailCr(null),setAiCr,setPage:navigate,drafts}))
+      )
+    );
+  }
+  return h('div',{className:'app'},
+    h(Sidebar,{page,setPage:navigate,user}),
+    h('div',{className:'main'},
+      h(Topbar,{page,user,onNew:()=>{setCrResult(null);navigate('new-cr');}}),
+      h('div',{className:'content'},
+        page==='dashboard'&&h(Dashboard,{crs,setPage,setPmModal,setDetailCr}),
+        page==='new-cr'&&h(NewCrForm,{crs,setCrs,settings,brds,setBrds,setPage,setCrResult,crResult,setAiCr}),
+        page==='tracking'&&h(CrTracking,{crs,setCrs,setDetailCr,user}),
+        page==='brd-repo'&&h(BrdRepo,{brds,crs}),
+        page==='ai-drafting'&&h(AiDrafting,{crs,drafts,setDrafts,aiCr,setAiCr,user}),
+        page==='admin'&&h(Admin,{settings,setSettings,user}),
+      ),
+      pmModal&&h(PmModal,{pm:pmModal,crs,onClose:()=>setPmModal(null)}),
+    )
+  );
+}
+
+/* LOGIN */
+function Login({onLogin}){
+  const[role,setRole]=useState('PM');const[name,setName]=useState('Aisha Rahman');
+  return h('div',{style:{minHeight:'100vh',background:'var(--navy)',display:'flex',alignItems:'center',justifyContent:'center'}},
+    h('div',{style:{background:'#fff',borderRadius:12,padding:32,width:380,boxShadow:'0 20px 60px rgba(0,0,0,.35)'}},
+      h('div',{style:{marginBottom:22}},h('div',{style:{width:40,height:40,borderRadius:9,background:'#fff',border:'1.5px solid var(--border)',display:'flex',alignItems:'center',justifyContent:'center',marginBottom:12,color:'var(--navy)'}},Ic.dashboard(null,20,20)),h('h1',{style:{fontSize:17,fontWeight:700,color:'var(--navy)'}},'CR Management System'),h('p',{style:{fontSize:11.5,color:'var(--slate-light)',marginTop:2}},'Change Request Tracking Platform')),
+      h('div',{className:'form-group'},h('label',null,'Role'),h('select',{value:role,onChange:e=>setRole(e.target.value)},ROLES.map(r=>h('option',{key:r},r)))),
+      h('div',{className:'form-group'},h('label',null,'Sign in as'),h('select',{value:name,onChange:e=>setName(e.target.value)},PM_LIST.map(p=>h('option',{key:p.id},p.name)),h('option',{value:'Admin User'},'Admin User'))),
+      h('button',{className:'btn btn-primary',style:{width:'100%',justifyContent:'center',padding:'9px 14px'},onClick:()=>onLogin({name,role})},'Sign In'),
+      h('p',{style:{fontSize:10.5,color:'var(--slate-light)',textAlign:'center',marginTop:10}},'Prototype — no authentication required')
+    )
+  );
+}
+
+/* SIDEBAR */
+function Sidebar({page,setPage,user}){
+  const items=[{id:'dashboard',label:'Dashboard',icon:'dashboard'},{id:'new-cr',label:'New CR Estimation',icon:'plus'},{id:'tracking',label:'CR Tracking',icon:'list'},{id:'brd-repo',label:'BRD Repository',icon:'folder'},{id:'ai-drafting',label:'AI Drafting — RS/FS',icon:'doc'},...(user.role==='Admin'?[{id:'admin',label:'Admin Settings',icon:'settings'}]:[])];
+  const roleColor={PM:'#3d7de8','Product Engineer':'#0891b2',Admin:'#d97706'};
+  return h('div',{className:'sidebar'},
+    h('div',{className:'sidebar-brand'},h('div',{className:'brand-icon'},Ic.dashboard(null,14,14)),h('h1',null,'CR Management'),h('p',null,'System')),
+    h('div',{className:'sidebar-nav'},h('div',{className:'nav-section'},'Navigation'),items.map(i=>h('div',{key:i.id,className:'nav-item'+(page===i.id?' active':''),onClick:()=>setPage(i.id)},Ic[i.icon]('nav-icon',14,14),i.label))),
+    h('div',{className:'sidebar-user'},h('div',{className:'u-name'},user.name),h('div',{style:{display:'flex',alignItems:'center',gap:5,marginTop:3}},h('span',{style:{fontSize:9.5,fontWeight:600,color:roleColor[user.role]||'rgba(255,255,255,.5)',background:'rgba(255,255,255,.08)',borderRadius:20,padding:'1px 7px'}},user.role)))
+  );
+}
+
+/* TOPBAR */
+function Topbar({page,user,onNew}){
+  const titles={dashboard:'Dashboard','new-cr':'New CR Estimation',tracking:'CR Tracking','brd-repo':'BRD Repository','ai-drafting':'AI Document Drafting',admin:'Admin Settings'};
+  const roleColor={PM:'#1e5fc2','Product Engineer':'#0891b2',Admin:'#d97706'};
+  const rc=roleColor[user.role]||'#1e5fc2';
+  return h('div',{className:'topbar'},
+    h('h2',null,titles[page]||page),
+    h('div',{className:'topbar-right'},
+      h('button',{
+        onClick:onNew,
+        style:{
+          display:'inline-flex',alignItems:'center',gap:6,
+          padding:'7px 16px',
+          background:'var(--blue)',color:'#fff',
+          border:'none',borderRadius:8,
+          fontSize:12.5,fontWeight:600,cursor:'pointer',
+          boxShadow:'0 1px 3px rgba(30,95,194,.3)',
+          transition:'all .15s',letterSpacing:'.1px'
+        },
+        onMouseOver:e=>{e.currentTarget.style.background='var(--navy)';e.currentTarget.style.boxShadow='0 2px 6px rgba(15,32,68,.25)';},
+        onMouseOut:e=>{e.currentTarget.style.background='var(--blue)';e.currentTarget.style.boxShadow='0 1px 3px rgba(30,95,194,.3)';}
+      },
+        h('svg',{viewBox:'0 0 16 16',fill:'none',stroke:'currentColor',strokeWidth:2,strokeLinecap:'round',width:13,height:13},
+          h('line',{x1:8,y1:2,x2:8,y2:14}),h('line',{x1:2,y1:8,x2:14,y2:8})
+        ),
+        'New CR'
+      ),
+      h('div',{
+        style:{
+          width:34,height:34,borderRadius:'50%',
+          background:rc,
+          color:'#fff',
+          display:'flex',alignItems:'center',justifyContent:'center',
+          fontSize:11.5,fontWeight:700,letterSpacing:'.5px',
+          boxShadow:'0 1px 3px rgba(0,0,0,.2)',
+          cursor:'default',userSelect:'none',
+          flexShrink:0,
+        }
+      },user.name.split(' ').map(n=>n[0]).join('').slice(0,2))
+    )
+  );
+}
+
+/* DASHBOARD */
+function Dashboard({crs,setPage,setPmModal,setDetailCr}){
+  const[fPm,setFPm]=useState('');const[fSt,setFSt]=useState('');const[fStg,setFStg]=useState('');
+  const total=crs.length,active=crs.filter(c=>['In Progress','In Review','Raised','Pending Assignment'].includes(c.status)).length,closed=crs.filter(c=>c.status==='Closed').length,pending=crs.filter(c=>c.status==='In Review').length;
+  const occ=PM_LIST.filter(p=>activeCRs(crs,p.id).length>0).length;
+  const freeWk=PM_LIST.filter(p=>{const av=pmAvail(crs,p.id);if(av.label==='Available Now')return true;return(new Date(av.date)-new Date())/864e5<=7;}).length;
+  const busiest=PM_LIST.reduce((acc,p)=>{const n=activeCRs(crs,p.id).length;return n>acc.n?{pm:p,n}:acc;},{pm:PM_LIST[0],n:-1});
+  const filtCrs=crs.filter(c=>{if(fPm&&c.assignedPm!==fPm)return false;if(fSt&&c.status!==fSt)return false;if(fStg&&c.currentStage!==fStg)return false;return true;}).slice(0,10);
+  return h('div',null,
+    h('div',{className:'grid-4 section-gap'},sc('Total CRs',total,'All change requests'),sc('Active CRs',active,'In progress / review'),sc('Closed CRs',closed,'Successfully closed'),sc('Pending Review',pending,'Awaiting client approval')),
+    h('div',{className:'grid-4 section-gap'},sc('Total PMs',PM_LIST.length,'Project managers'),sc('PMs Occupied',occ,'With active CRs'),sc('Free This Week',freeWk,'Available ≤7 days'),h('div',{className:'stat-card'},h('div',{className:'stat-label'},'Highest Load PM'),h('div',{style:{fontSize:14,fontWeight:700,color:'var(--navy)',marginTop:5}},busiest.pm.name),h('div',{className:'stat-sub'},busiest.n+' active CRs'))),
+    h('div',{className:'card section-gap'},
+      h('div',{className:'card-title'},Ic.list(null,14,14),'Recent Change Requests'),
+      h('div',{className:'filter-bar'},
+        h('select',{value:fPm,onChange:e=>setFPm(e.target.value),style:{fontSize:11,padding:'5px 7px',width:'auto',minWidth:140}},h('option',{value:''},'All Project Managers'),PM_LIST.map(p=>h('option',{key:p.id,value:p.id},p.name))),
+        h('select',{value:fStg,onChange:e=>setFStg(e.target.value),style:{fontSize:11,padding:'5px 7px',width:'auto',minWidth:150}},h('option',{value:''},'All Stages'),STAGES.map(s=>h('option',{key:s},s))),
+        h('select',{value:fSt,onChange:e=>setFSt(e.target.value),style:{fontSize:11,padding:'5px 7px',width:'auto',minWidth:110}},h('option',{value:''},'All Statuses'),STATUSES.map(s=>h('option',{key:s},s))),
+        (fPm||fSt||fStg)&&h('button',{className:'btn btn-secondary btn-sm',onClick:()=>{setFPm('');setFSt('');setFStg('');}},Ic.close(null,11,11),'Clear')
+      ),
+      h('div',{className:'scroll-table'},h('table',null,
+        h('thead',null,h('tr',null,['CR ID','Source','Title','Client','PM','Stage','Status','Est. Completion'].map(col=>h('th',{key:col},col)))),
+        h('tbody',null,filtCrs.map(cr=>h('tr',{key:cr.id},
+          h('td',null,h('span',{style:{fontWeight:700,color:'var(--blue)',fontFamily:'monospace',fontSize:11}},'#'+cr.id)),
+          h('td',null,cr.source==='client'?h('span',{className:'client-source-tag'},Ic.globe(null,10,10),'Client'):h('span',{style:{fontSize:10,color:'var(--slate-light)'}},'Internal')),
+          h('td',null,h('span',{className:'cr-title-link',onClick:()=>setDetailCr(cr)},cr.title)),
+          h('td',null,cr.client),h('td',null,cr.assignedPm?getPM(cr.assignedPm).name:h('span',{style:{color:'var(--amber)',fontWeight:600}},'Unassigned')),
+          h('td',null,h('span',{className:'stage-badge'+(cr.currentStage==='PM Assignment Pending'?' pending':cr.currentStage==='Closed'?' closed':'')},cr.currentStage)),
+          h('td',null,h('span',{className:'badge '+sbCls(cr.status)},cr.status)),
+          h('td',null,fD(cr.estimatedCompletionDate))))
+      ))
+    ),
+    h('div',{className:'card section-gap'},h('div',{className:'card-title'},Ic.users(null,14,14),'PM Workload'),h('div',{style:{display:'grid',gridTemplateColumns:'repeat(5,1fr)',gap:10}},PM_LIST.map(pm=>{const a=activeCRs(crs,pm.id),av=pmAvail(crs,pm.id),ws=wlSt(crs,pm.id);return h('div',{key:pm.id,className:'pm-card',style:{cursor:'pointer'},onClick:()=>setPmModal(pm)},h('div',{style:{display:'flex',alignItems:'center',gap:7,marginBottom:7}},h('div',{className:'pm-avatar',style:{background:pm.color,color:'#fff'}},pm.initials),h('div',null,h('div',{style:{fontSize:11,fontWeight:700,color:'var(--navy)'}},pm.name),h('span',{className:'badge '+ws.cls,style:{marginTop:2}},ws.label))),h('div',{style:{fontSize:10,color:'var(--slate-light)',marginBottom:3}},'Active: '+a.length),h('div',{className:'progress-bar'},h('div',{className:'progress-fill',style:{width:Math.min(100,a.length*30)+'%',background:pm.color}})),h('div',{style:{fontSize:10,color:'var(--slate-light)',marginTop:5}},av.label==='Available Now'?h('span',{style:{color:'var(--green)',fontWeight:600}},'Available Now'):h('span',null,'Free: '+fD(av.date))),a.slice(0,1).map(c=>h('div',{key:c.id,style:{marginTop:4}},h('span',{className:'stage-badge',style:{fontSize:9}},c.id+' · '+c.currentStage))));})))
+    ),
+    h('div',{className:'grid-2 section-gap'},
+      h('div',{className:'card'},
+        h('div',{className:'card-title'},Ic.chart(null,14,14),'Active CRs by Client'),
+        h(ClientCrChart,{crs})
+      ),
+      h('div',{className:'card'},
+        h('div',{className:'card-title'},Ic.trend(null,14,14),'PM Utilization'),
+        PM_LIST.map(pm=>{
+          const a=activeCRs(crs,pm.id),pct=Math.min(100,a.length*33);
+          return h('div',{key:pm.id,style:{marginBottom:11}},
+            h('div',{style:{display:'flex',justifyContent:'space-between',fontSize:11.5,marginBottom:3}},
+              h('span',{style:{fontWeight:600,color:'var(--navy)'}},pm.name),
+              h('span',{style:{color:'var(--slate-light)'}},a.length+' active')
+            ),
+            h('div',{className:'progress-bar'},
+              h('div',{className:'progress-fill',style:{width:pct+'%',background:pm.color}})
+            ),
+            a.slice(0,1).map(c=>h('div',{key:c.id,style:{display:'flex',gap:4,marginTop:3,alignItems:'center'}},
+              h('span',{style:{fontSize:10,color:'var(--slate-light)'}},'↳ '+c.id+':'),
+              h('span',{className:'stage-badge',style:{fontSize:9}},c.currentStage)
+            ))
+          );
+        })
+      )
+    )
+  );
+}
+function sc(l,v,s){return h('div',{className:'stat-card'},h('div',{className:'stat-label'},l),h('div',{className:'stat-value'},v),h('div',{className:'stat-sub'},s));}
+
+/* CR DETAIL PAGE */
+function CrDetailPage({cr,crs,setCrs,user,settings,onBack,setAiCr,setPage}){
+  const isAdmin=user.role==='Admin',isPM=user.role==='PM',isPE=user.role==='Product Engineer';
+  const isPending=cr.currentStage==='PM Assignment Pending';
+  const[pmAssign,setPmAssign]=useState(cr.assignedPm||'');
+  const[complexity,setComplexity]=useState(cr.complexity||'');
+  const[hleSize,setHleSize]=useState(cr.hleSize||'');
+  const[stage,setStage]=useState(cr.currentStage);
+  const[status,setStatus]=useState(cr.status);
+  const[saved,setSaved]=useState(false);
+
+  function saveChanges(){
+    const bi=cr.businessImpact,urg=cr.urgency;
+    let score=0,band='',est={};
+    if(complexity&&hleSize&&bi&&urg){score=calcScore(complexity,bi,urg,hleSize);band=getBand(score,settings);est=getEst(band,settings);}
+    const totalDays=(est.brdDays||0)+(est.rsDays||0)+(est.fsDays||0)+(est.hleDays||0);
+    setCrs(cs=>cs.map(c=>{
+      if(c.id!==cr.id)return c;
+      const newStage=(isPending&&pmAssign&&stage==='PM Assignment Pending')?'BRD Approved':stage;
+      return{...c,assignedPm:pmAssign,complexity,hleSize,currentStage:newStage,status:newStage==='BRD Approved'&&c.status==='Pending Assignment'?'Raised':status,score,band,...(Object.keys(est).length?est:{}),estimatedCompletionDate:totalDays?dFN(totalDays):c.estimatedCompletionDate};
+    }));
+    setSaved(true);setTimeout(()=>setSaved(false),2000);
+  }
+  function toggleSignoff(field){setCrs(cs=>cs.map(c=>{if(c.id!==cr.id)return c;const upd={...c,[field]:!c[field]};if(upd.rsSignedOff&&upd.fsSignedOff&&upd.fsFinalised){upd.status='Closed';upd.currentStage='Closed';}return upd;}));}
+  function toggleField(field){setCrs(cs=>cs.map(c=>c.id===cr.id?{...c,[field]:!c[field]}:c));}
+
+  const stageList=['BRD Approved','RS Drafting','RS Sent for Internal Review','RS Sent to Client Review','RS Approved','FS Drafting','FS Sent for Internal Review','FS Sent to Client Review','FS Approved','HLE in Progress','Closed'];
+  const curIdx=stageList.indexOf(cr.currentStage);
+  const liveComplexity=complexity||cr.complexity;
+  const liveHle=hleSize||cr.hleSize;
+
+  return h('div',{className:'cr-detail-page'},
+    h('div',{style:{marginBottom:18}},
+      h('button',{className:'btn btn-secondary btn-sm',onClick:onBack,style:{marginBottom:12,display:'inline-flex',alignItems:'center',gap:4}},Ic.arrowLeft(null,11,11),'Back to Tracking'),
+      h('div',{style:{display:'flex',alignItems:'flex-start',justifyContent:'space-between'}},
+        h('div',null,
+          h('div',{style:{display:'flex',alignItems:'center',gap:8,marginBottom:5}},h('span',{style:{fontWeight:700,color:'var(--blue)',fontFamily:'monospace',fontSize:12}},'#'+cr.id),cr.source==='client'&&h('span',{className:'client-source-tag'},Ic.globe(null,10,10),'Client-logged CR'),h('span',{className:'badge '+sbCls(cr.status)},cr.status)),
+          h('h1',{style:{fontSize:18,fontWeight:700,color:'var(--navy)'}},cr.title),
+          h('p',{style:{fontSize:12,color:'var(--slate-light)',marginTop:3}},cr.client+(cr.createdAt?' · Logged '+fD(cr.createdAt):''))
+        ),
+        saved&&h('span',{style:{fontSize:11.5,color:'var(--green)',display:'flex',alignItems:'center',gap:4,marginTop:4}},Ic.check(null,13,13),'Changes saved')
+      )
+    ),
+    !isPending&&h('div',{className:'workflow-stepper'},stageList.map((s,i)=>h('div',{key:s,style:{display:'flex',alignItems:'center',gap:0,flexShrink:0}},h('div',{className:'step-node'+(i<curIdx?' done':i===curIdx?' active':' pending')},s),i<stageList.length-1&&h('div',{className:'step-arrow'})))),
+    isPending&&h('div',{className:'info-banner'},Ic.info(null,15,15),h('span',null,'This CR was logged by the client. Assign a PM and fill in the estimation fields — the estimate will generate automatically.')),
+
+    /* Client fields */
+    h('div',{className:'field-section'},
+      h('div',{className:'field-section-title'},'Client-Provided Information',h('span',{className:'locked-badge'},Ic.lock(null,11,11),isAdmin?'Editable (Admin)':'Locked — client data')),
+      h('div',{className:'form-row'},lf('CR ID',cr.id,!isAdmin),lf('CR Title',cr.title,!isAdmin)),
+      h('div',{className:'form-group'},h('label',null,'Description'),h('textarea',{defaultValue:cr.description,disabled:!isAdmin,rows:3})),
+      h('div',{className:'form-row'},h('div',{className:'form-group'},h('label',null,'Business Impact'),h('select',{defaultValue:cr.businessImpact,disabled:!isAdmin},['Low','Medium','High'].map(o=>h('option',{key:o},o)))),h('div',{className:'form-group'},h('label',null,'Urgency'),h('select',{defaultValue:cr.urgency,disabled:!isAdmin},['Low','Medium','High'].map(o=>h('option',{key:o},o))))),
+      cr.urgency==='High'&&h('div',{className:'urgent-banner',style:{marginTop:4,marginBottom:0}},Ic.alert(null,16,16),h('span',{style:{fontWeight:700,color:'var(--red-text)',fontSize:12}},'High Urgency — this CR should be prioritized operationally')),
+    ),
+
+    /* PM fields */
+    h('div',{className:'field-section'},
+      h('div',{className:'field-section-title'},'PM Estimation Fields',(isPM||isAdmin)?h('span',{style:{fontSize:10,color:'var(--green)',fontWeight:600,display:'flex',alignItems:'center',gap:3}},Ic.unlock(null,11,11),'Editable by PM / Admin'):h('span',{className:'locked-badge'},Ic.lock(null,11,11),'Read-only')),
+      h('div',{className:'form-row-3'},
+        h('div',{className:'form-group'},h('label',null,'Assigned Project Manager'),h('select',{value:pmAssign,onChange:e=>setPmAssign(e.target.value),disabled:!(isPM||isAdmin)},h('option',{value:''},'— Assign PM —'),PM_LIST.map(p=>h('option',{key:p.id,value:p.id},p.name+(activeCRs(crs,p.id).length>0?' ('+activeCRs(crs,p.id).length+' active)':' — free'))))),
+        h('div',{className:'form-group'},h('label',null,'Complexity'),h('select',{value:complexity,onChange:e=>setComplexity(e.target.value),disabled:!(isPM||isAdmin)},h('option',{value:''},'— Select —'),['Low','Medium','High'].map(o=>h('option',{key:o},o)))),
+        h('div',{className:'form-group'},h('label',null,'HLE Size'),h('select',{value:hleSize,onChange:e=>setHleSize(e.target.value),disabled:!(isPM||isAdmin)},h('option',{value:''},'— Select —'),['S','M','L','XL'].map(o=>h('option',{key:o},o)))),
+      ),
+      h('div',{className:'form-row'},
+        h('div',{className:'form-group'},h('label',null,'Current Stage'),h('select',{value:stage,onChange:e=>setStage(e.target.value),disabled:!(isPM||isAdmin||isPE)},(isPending?['PM Assignment Pending',...PM_STAGES]:PM_STAGES).map(s=>h('option',{key:s},s)))),
+        h('div',{className:'form-group'},h('label',null,'Status'),h('select',{value:status,onChange:e=>setStatus(e.target.value),disabled:!(isPM||isAdmin)},STATUSES.map(s=>h('option',{key:s},s)))),
+      ),
+    ),
+
+    /* Estimation panel */
+    h('div',{className:'field-section'},
+      h('div',{className:'field-section-title'},'Estimation & Timeline',h('span',{style:{fontSize:10,color:'var(--slate-light)',fontWeight:400}},liveComplexity&&liveHle&&cr.businessImpact&&cr.urgency?'Auto-calculated from selections above':'Complete Complexity and HLE Size above to generate')),
+      h(EstimationPanel,{complexity:liveComplexity,businessImpact:cr.businessImpact,urgency:cr.urgency,hleSize:liveHle,settings,existing:cr.score?cr:null})
+    ),
+
+    /* Sign-off */
+    h('div',{className:'field-section'},
+      h('div',{className:'field-section-title'},'Document Sign-off & Closure'),
+      h('div',{className:'signoff-row'},
+        h('div',null,h('div',{className:'signoff-label'},'RS — Requirements Specification'),h('div',{className:'signoff-sub'},cr.rsDrafted?'Draft created — ready for sign-off':'Draft not yet created')),
+        h('div',{style:{display:'flex',gap:7,alignItems:'center'}},
+          !cr.rsDrafted&&h('button',{className:'btn btn-secondary btn-sm',onClick:()=>{setAiCr(cr);setPage('ai-drafting');onBack();}},Ic.pencil(null,11,11),'Draft RS'),
+          cr.rsDrafted&&!cr.rsSignedOff&&(isPM||isAdmin)&&h('button',{className:'btn btn-success btn-sm',onClick:()=>toggleSignoff('rsSignedOff')},Ic.check(null,11,11),'Mark Client Sign-off'),
+          cr.rsSignedOff&&h('span',{className:'signoff-done'},Ic.check(null,13,13),'Client Signed Off'),
+        )
+      ),
+      h('div',{className:'signoff-row'},
+        h('div',null,h('div',{className:'signoff-label'},'FS — Functional Specification'),h('div',{className:'signoff-sub'},cr.fsFinalised?'Finalised by Product Engineer — ready for sign-off':cr.fsDrafted?'Draft created — awaiting PE finalisation':'Draft not yet created')),
+        h('div',{style:{display:'flex',gap:7,alignItems:'center'}},
+          !cr.fsDrafted&&h('button',{className:'btn btn-secondary btn-sm',onClick:()=>{setAiCr(cr);setPage('ai-drafting');onBack();}},Ic.pencil(null,11,11),'Draft FS'),
+          cr.fsDrafted&&!cr.fsFinalised&&isPE&&h('button',{className:'btn btn-teal btn-sm',onClick:()=>toggleField('fsFinalised')},Ic.shield(null,11,11),'Finalise FS'),
+          cr.fsDrafted&&!cr.fsFinalised&&!isPE&&h('span',{className:'badge badge-teal'},'Awaiting PE Finalisation'),
+          cr.fsFinalised&&!cr.fsSignedOff&&(isPM||isAdmin)&&h('button',{className:'btn btn-success btn-sm',onClick:()=>toggleSignoff('fsSignedOff')},Ic.check(null,11,11),'Mark Client Sign-off'),
+          cr.fsSignedOff&&h('span',{className:'signoff-done'},Ic.check(null,13,13),'Client Signed Off'),
+        )
+      ),
+      canClose(cr)&&cr.status!=='Closed'&&h('div',{style:{marginTop:12,padding:'10px 14px',background:'#f0fdf4',border:'1px solid #bbf7d0',borderRadius:7,display:'flex',alignItems:'center',justifyContent:'space-between'}},h('span',{style:{fontSize:12,color:'var(--green-text)',fontWeight:600}},'RS and FS are both signed off. This CR can now be closed.'),(isPM||isAdmin)&&h('button',{className:'btn btn-success',onClick:()=>setCrs(cs=>cs.map(c=>c.id===cr.id?{...c,status:'Closed',currentStage:'Closed'}:c))},Ic.check(null,13,13),'Close CR')),
+      cr.status==='Closed'&&h('div',{className:'success-banner'},Ic.check(null,15,15),h('span',null,'This CR is closed. RS and FS were both signed off by the client and the FS was finalised by the Product Engineer.'))
+    ),
+
+    (isPM||isAdmin||isPE)&&h('div',{style:{display:'flex',gap:9,alignItems:'center',paddingBottom:24}},
+      h('button',{className:'btn btn-primary',onClick:saveChanges},Ic.save(null,13,13),'Save Changes'),
+      h('button',{className:'btn btn-secondary',onClick:()=>{setAiCr(cr);setPage('ai-drafting');onBack();}},Ic.pencil(null,13,13),'Go to AI Drafting'),
+      saved&&h('span',{style:{fontSize:11.5,color:'var(--green)',display:'flex',alignItems:'center',gap:4}},Ic.check(null,13,13),'Saved successfully'),
+    )
+  );
+}
+function lf(label,val,locked){return h('div',{className:'form-group field-locked'},h('label',null,label),h('input',{type:'text',defaultValue:val,disabled:locked}),locked&&h('span',{className:'lock-icon'},Ic.lock(null,12,12)));}
+
+/* NEW CR FORM */
+function NewCrForm({crs,setCrs,settings,brds,setBrds,setPage,setCrResult,crResult,setAiCr}){
+  const[form,setForm]=useState({title:'',client:'',description:'',assignedPm:'pm1',complexity:'Medium',businessImpact:'Medium',urgency:'Medium',hleSize:'M',notes:'',brdFile:null});
+  const[errors,setErrors]=useState({});
+  function validate(){const e={};if(!form.title.trim())e.title='Required';if(!form.client.trim())e.client='Required';return e;}
+  function submit(){
+    const e=validate();if(Object.keys(e).length){setErrors(e);return;}
+    const score=calcScore(form.complexity,form.businessImpact,form.urgency,form.hleSize),band=getBand(score,settings),est=getEst(band,settings),crId=genId(crs),now=new Date().toISOString().slice(0,10),total=est.brdDays+est.rsDays+est.fsDays+est.hleDays;
+    const cr={id:crId,...form,currentStage:'BRD Approved',stageStartDate:now,stageDueDate:dFN(est.brdDays),status:'Raised',estimatedCompletionDate:dFN(total),createdAt:now,score,band,...est,source:'internal',rsSignedOff:false,fsSignedOff:false,rsDrafted:false,fsDrafted:false,fsFinalised:false};
+    if(form.brdFile)setBrds(b=>[...b,{id:'brd'+Date.now(),crId,fileName:form.brdFile.name,uploadedAt:now,size:Math.round(form.brdFile.size/1024)+' KB'}]);
+    setCrs(c=>[cr,...c]);
+    setCrResult({cr,score,band,estimates:est,logic:logicTxt(form.complexity,form.businessImpact,form.urgency,form.hleSize,score,band,est)});
+  }
+  if(crResult)return h(EstResult,{result:crResult,onNew:()=>setCrResult(null),setPage,setAiCr});
+  return h('div',null,
+    h('div',{className:'alert-info',style:{marginBottom:14}},'Manual CR entry — use this form to log a CR internally. Client-logged CRs appear automatically in the Tracking tab.'),
+    h('div',{className:'card section-gap'},
+      h('div',{className:'card-title'},Ic.doc(null,14,14),'CR Information'),
+      h('div',{className:'form-row'},fld('CR Title','title',form,setForm,errors,'e.g. Customer Portal Redesign'),fld('Client Name','client',form,setForm,errors,'e.g. AlphaBank')),
+      h('div',{className:'form-group'},h('label',null,'Description'),h('textarea',{value:form.description,onChange:e=>setForm(f=>({...f,description:e.target.value})),placeholder:'Describe the change request...'})),
+      h('div',{className:'form-row'},h('div',{className:'form-group'},h('label',null,'Assigned Project Manager'),h('select',{value:form.assignedPm,onChange:e=>setForm(f=>({...f,assignedPm:e.target.value}))},PM_LIST.map(p=>h('option',{key:p.id,value:p.id},p.name)))),h('div',{className:'form-group'},h('label',null,'BRD Upload'),h('input',{type:'file',accept:'.pdf,.doc,.docx',onChange:e=>setForm(f=>({...f,brdFile:e.target.files[0]||null}))})))
+    ),
+    h('div',{className:'card section-gap'},
+      h('div',{className:'card-title'},Ic.list(null,14,14),'Manual Classification'),
+      h('div',{className:'alert-info'},'Fields below must be manually selected by the PM. Estimates are calculated using predefined rules — no AI classification applied.'),
+      h('div',{className:'form-row-3'},sf('Complexity','complexity',['Low','Medium','High'],form,setForm),sf('Business Impact','businessImpact',['Low','Medium','High'],form,setForm),sf('Urgency','urgency',['Low','Medium','High'],form,setForm)),
+      h('div',{className:'form-row'},sf('HLE Size','hleSize',['S','M','L','XL'],form,setForm),h('div',{className:'form-group'},h('label',null,'Optional Notes'),h('input',{type:'text',value:form.notes,onChange:e=>setForm(f=>({...f,notes:e.target.value})),placeholder:'Internal notes...'}))),
+    ),
+    h('div',{className:'card section-gap'},
+      h('div',{className:'card-title'},Ic.calculator(null,14,14),'Live Estimation Preview'),
+      h(EstimationPanel,{complexity:form.complexity,businessImpact:form.businessImpact,urgency:form.urgency,hleSize:form.hleSize,settings,existing:null}),
+    ),
+    h('div',{style:{display:'flex',gap:9,marginTop:4}},h('button',{className:'btn btn-primary',onClick:submit},Ic.bolt(null,13,13),'Submit CR'),h('button',{className:'btn btn-secondary',onClick:()=>setErrors({})},Ic.save(null,13,13),'Save Draft'))
+  );
+}
+function fld(label,key,form,setForm,errors,ph){return h('div',{className:'form-group'},h('label',null,label),h('input',{type:'text',value:form[key],onChange:e=>setForm(f=>({...f,[key]:e.target.value})),placeholder:ph,style:errors[key]?{borderColor:'var(--red)'}:{}}),errors[key]&&h('span',{style:{fontSize:10.5,color:'var(--red)'}},errors[key]));}
+function sf(label,key,opts,form,setForm){return h('div',{className:'form-group'},h('label',null,label),h('select',{value:form[key],onChange:e=>setForm(f=>({...f,[key]:e.target.value}))},opts.map(o=>h('option',{key:o},o))));}
+
+/* EST RESULT */
+function EstResult({result,onNew,setPage,setAiCr}){
+  const{cr,score,band,estimates,logic}=result,urgent=cr.urgency==='High';
+  return h('div',null,
+    urgent&&h('div',{className:'urgent-banner'},Ic.alert(null,16,16),h('div',null,h('div',{style:{fontWeight:700,color:'var(--red-text)',fontSize:12.5}},'URGENT / PRIORITY CR'),h('div',{style:{fontSize:11.5,color:'#991b1b',marginTop:2}},'High Urgency — prioritize operationally.'))),
+    h('div',{className:'card section-gap'},
+      h('div',{className:'card-title'},Ic.check(null,14,14),'CR Submitted — #'+cr.id+': '+cr.title),
+      h('div',{className:'card',style:{marginBottom:14}},h('div',{className:'card-title',style:{marginBottom:8}},Ic.calculator(null,14,14),'Estimation Result'),h(EstimationPanel,{complexity:cr.complexity,businessImpact:cr.businessImpact,urgency:cr.urgency,hleSize:cr.hleSize,settings:INIT_SET,existing:null})),
+      h('div',{style:{display:'flex',gap:9,flexWrap:'wrap'}},
+        h('button',{className:'btn btn-primary',onClick:()=>{setAiCr(cr);setPage('ai-drafting');}},Ic.pencil(null,13,13),'Generate RS Draft'),
+        h('button',{className:'btn btn-success',onClick:()=>{setAiCr(cr);setPage('ai-drafting');}},Ic.doc(null,13,13),'Generate FS Draft'),
+        h('button',{className:'btn btn-secondary',onClick:()=>setPage('tracking')},Ic.list(null,13,13),'View in Tracking'),
+        h('button',{className:'btn btn-secondary',onClick:onNew},Ic.plus(null,13,13),'New CR')
+      )
+    )
+  );
+}
+
+/* CR TRACKING */
+function CrTracking({crs,setCrs,setDetailCr,user}){
+  const[q,setQ]=useState('');
+  const[fPm,setFPm]=useState('');
+  const[fSt,setFSt]=useState('');
+  const[fStg,setFStg]=useState('');
+
+  const rows=crs.filter(c=>{
+    const s=q.toLowerCase();
+    if(s&&!c.id.toLowerCase().includes(s)&&!c.title.toLowerCase().includes(s)&&!c.client.toLowerCase().includes(s))return false;
+    if(fPm&&c.assignedPm!==fPm)return false;
+    if(fSt&&c.status!==fSt)return false;
+    if(fStg&&c.currentStage!==fStg)return false;
+    return true;
+  });
+  const pending=rows.filter(c=>c.currentStage==='PM Assignment Pending');
+  const rest=rows.filter(c=>c.currentStage!=='PM Assignment Pending');
+
+  // Consolidated: Impact + Urgency -> "H/H" style; RS+FS -> doc status pill
+  function impUrgBadge(cr){
+    const ic={Low:'G',Medium:'M',High:'H'};
+    const uc={Low:'badge-green',Medium:'badge-amber',High:'badge-red'};
+    return h('span',{style:{display:'inline-flex',alignItems:'center',gap:3,whiteSpace:'nowrap'}},
+      h('span',{className:'badge '+uc[cr.businessImpact]||'badge-gray',style:{fontSize:9}},ic[cr.businessImpact]||'—'),
+      h('span',{style:{fontSize:9,color:'var(--slate-light)'}},'/'),
+      h('span',{className:'badge '+(uc[cr.urgency]||'badge-gray'),style:{fontSize:9}},ic[cr.urgency]||'—')
+    );
+  }
+
+  function docStatus(cr){
+    if(cr.status==='Closed')return h('span',{style:{fontSize:10,color:'var(--green)',fontWeight:600}},'✓ Closed');
+    if(!cr.rsDrafted&&!cr.fsDrafted)return h('span',{style:{fontSize:10,color:'var(--slate-light)'}},'Not started');
+    const rsPart=cr.rsSignedOff?'RS ✓':cr.rsDrafted?'RS drafted':'—';
+    const fsPart=cr.fsSignedOff?'FS ✓':cr.fsFinalised?'FS final':cr.fsDrafted?'FS drafted':'—';
+    const bothSigned=cr.rsSignedOff&&cr.fsSignedOff;
+    return h('span',{style:{fontSize:10,color:bothSigned?'var(--green)':'var(--slate)',whiteSpace:'nowrap'}},rsPart+' · '+fsPart);
+  }
+
+  const tdStyle={whiteSpace:'nowrap',verticalAlign:'middle'};
+
+  return h('div',null,
+    pending.length>0&&h('div',{style:{marginBottom:14,background:'#fffbeb',border:'1px solid #fde68a',borderLeft:'4px solid var(--amber)',borderRadius:9,padding:'12px 16px'}},
+      h('div',{style:{fontWeight:700,fontSize:11.5,color:'#92400e',marginBottom:8,display:'flex',alignItems:'center',gap:5}},
+        Ic.alert(null,13,13),pending.length+' CR'+(pending.length!==1?'s':'')+' awaiting PM assignment'
+      ),
+      pending.map(cr=>h('div',{key:cr.id,style:{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'7px 0',borderBottom:'1px solid #fde68a'}},
+        h('div',{style:{display:'flex',alignItems:'center',gap:10}},
+          h('span',{style:{fontWeight:700,color:'var(--blue)',fontFamily:'monospace',fontSize:11}},'#'+cr.id),
+          h('span',{style:{fontWeight:600,fontSize:12,cursor:'pointer',color:'var(--navy)'},onClick:()=>setDetailCr(cr)},cr.title),
+          h('span',{style:{fontSize:11,color:'var(--slate-light)'}},cr.client),
+          h('span',{className:'badge badge-red'},cr.businessImpact+' Impact'),
+          h('span',{className:'badge badge-'+(cr.urgency==='High'?'red':'amber')},cr.urgency+' Urgency')
+        ),
+        h('button',{className:'btn btn-primary btn-sm',onClick:()=>setDetailCr(cr)},Ic.user(null,11,11),'Assign & Estimate')
+      ))
+    ),
+
+    h('div',{className:'card'},
+      h('div',{className:'filter-bar'},
+        h('div',{className:'search-bar'},
+          h('span',{className:'search-icon'},Ic.search(null,13,13)),
+          h('input',{type:'text',placeholder:'Search ID, title or client…',value:q,onChange:e=>setQ(e.target.value)})
+        ),
+        h('select',{value:fPm,onChange:e=>setFPm(e.target.value),style:{fontSize:11,padding:'5px 7px',width:'auto',minWidth:130}},
+          h('option',{value:''},'All PMs'),PM_LIST.map(p=>h('option',{key:p.id,value:p.id},p.name))
+        ),
+        h('select',{value:fSt,onChange:e=>setFSt(e.target.value),style:{fontSize:11,padding:'5px 7px',width:'auto',minWidth:110}},
+          h('option',{value:''},'All Statuses'),STATUSES.map(s=>h('option',{key:s},s))
+        ),
+        h('select',{value:fStg,onChange:e=>setFStg(e.target.value),style:{fontSize:11,padding:'5px 7px',width:'auto',minWidth:150}},
+          h('option',{value:''},'All Stages'),STAGES.map(s=>h('option',{key:s},s))
+        ),
+        (fPm||fSt||fStg||q)&&h('button',{className:'btn btn-secondary btn-sm',onClick:()=>{setFPm('');setFSt('');setFStg('');setQ('');}},Ic.close(null,11,11),'Clear'),
+        h('span',{style:{fontSize:11,color:'var(--slate-light)',marginLeft:'auto'}},rows.length+' results')
+      ),
+
+      h('div',{style:{overflowX:'auto'}},
+        h('table',{style:{width:'100%',borderCollapse:'collapse',tableLayout:'fixed',minWidth:1138}},
+          h('colgroup',null,
+            h('col',{style:{width:76}}),   // CR ID
+            h('col',{style:{width:64}}),   // Source
+            h('col',{style:{width:170}}),  // Title
+            h('col',{style:{width:96}}),   // Client
+            h('col',{style:{width:100}}),  // PM
+            h('col',{style:{width:68}}),   // Impact/Urgency
+            h('col',{style:{width:188}}),  // Stage
+            h('col',{style:{width:108}}),  // Status
+            h('col',{style:{width:136}}),  // Docs
+            h('col',{style:{width:84}}),   // Due
+            h('col',{style:{width:48}}),   // Action
+          ),
+          h('thead',null,
+            h('tr',null,
+              ['CR ID','Source','Title','Client','Assigned PM','Imp / Urg','Current Stage','Status','Documents','Due Date',''].map(col=>
+                h('th',{key:col,style:{whiteSpace:'nowrap',padding:'8px 8px',fontSize:10,fontWeight:700,color:'var(--slate)',background:'#f8fafc',borderBottom:'2px solid var(--border)',letterSpacing:'.3px',textTransform:'uppercase'}},col)
+              )
+            )
+          ),
+          h('tbody',null,
+            [...pending,...rest].map(cr=>
+              h('tr',{key:cr.id,
+                style:{background:cr.currentStage==='PM Assignment Pending'?'#fffdf0':'#fff',cursor:'pointer'},
+                onClick:()=>setDetailCr(cr)
+              },
+                // CR ID
+                h('td',{style:{...tdStyle,padding:'10px 8px'}},
+                  h('span',{style:{fontWeight:700,color:'var(--blue)',fontFamily:'monospace',fontSize:11}},'#'+cr.id)
+                ),
+                // Source
+                h('td',{style:{...tdStyle,padding:'10px 8px'}},
+                  cr.source==='client'
+                    ?h('span',{className:'client-source-tag',style:{fontSize:9,display:'inline-flex',alignItems:'center',gap:3}},Ic.globe(null,9,9),'Client')
+                    :h('span',{style:{fontSize:10,color:'var(--slate-light)'}},'Internal')
+                ),
+                // Title — truncated
+                h('td',{style:{...tdStyle,padding:'10px 8px',overflow:'hidden'}},
+                  h('span',{style:{fontWeight:600,fontSize:11.5,color:'var(--navy)',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',display:'block'}},cr.title)
+                ),
+                // Client
+                h('td',{style:{...tdStyle,padding:'10px 8px'}},
+                  h('span',{style:{fontSize:11,color:'var(--slate)',whiteSpace:'nowrap'}},cr.client)
+                ),
+                // PM
+                h('td',{style:{...tdStyle,padding:'10px 8px'}},
+                  cr.assignedPm
+                    ?h('div',{style:{display:'flex',alignItems:'center',gap:5}},
+                        h('div',{style:{width:18,height:18,borderRadius:'50%',background:getPM(cr.assignedPm).color,color:'#fff',fontSize:7.5,fontWeight:700,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}},getPM(cr.assignedPm).initials),
+                        h('span',{style:{fontSize:11,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}},getPM(cr.assignedPm).name.split(' ')[0])
+                      )
+                    :h('span',{style:{fontSize:10,color:'var(--amber)',fontWeight:700,whiteSpace:'nowrap'}},'⚠ Unassigned')
+                ),
+                // Impact / Urgency
+                h('td',{style:{...tdStyle,padding:'10px 8px'}},impUrgBadge(cr)),
+                // Stage
+                h('td',{style:{...tdStyle,padding:'10px 8px'}},
+                  h('span',{
+                    className:'stage-badge'+(cr.currentStage==='PM Assignment Pending'?' pending':cr.currentStage==='Closed'?' closed':''),
+                    style:{fontSize:9.5,whiteSpace:'nowrap'}
+                  },cr.currentStage)
+                ),
+                // Status
+                h('td',{style:{...tdStyle,padding:'10px 8px'}},
+                  h('span',{className:'badge '+sbCls(cr.status),style:{fontSize:9.5,whiteSpace:'nowrap'}},
+                    cr.status==='Pending Assignment'?'Pending':cr.status
+                  )
+                ),
+                // Documents (RS + FS consolidated)
+                h('td',{style:{...tdStyle,padding:'10px 8px'}},docStatus(cr)),
+                // Due date
+                h('td',{style:{...tdStyle,padding:'10px 8px'}},
+                  h('span',{style:{fontSize:11,color:'var(--slate)',whiteSpace:'nowrap'}},
+                    cr.estimatedCompletionDate?fD(cr.estimatedCompletionDate):'—'
+                  )
+                ),
+                // Open button
+                h('td',{style:{...tdStyle,padding:'10px 6px'},onClick:e=>e.stopPropagation()},
+                  h('button',{className:'btn btn-secondary btn-sm',onClick:()=>setDetailCr(cr)},Ic.eye(null,11,11))
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  );
+}
+
+/* BRD REPO */
+function BrdRepo({brds,crs}){
+  const[q,setQ]=useState('');
+  const rows=brds.filter(b=>!q||b.fileName.toLowerCase().includes(q.toLowerCase())||b.crId.toLowerCase().includes(q.toLowerCase()));
+  return h('div',null,h('div',{className:'card'},h('div',{className:'card-title'},Ic.folder(null,14,14),'BRD Repository'),h('div',{style:{display:'flex',gap:9,marginBottom:13,alignItems:'center'}},h('div',{className:'search-bar'},h('span',{className:'search-icon'},Ic.search(null,13,13)),h('input',{type:'text',placeholder:'Search BRDs…',value:q,onChange:e=>setQ(e.target.value)})),h('span',{style:{fontSize:11,color:'var(--slate-light)'}},rows.length+' documents')),rows.length===0&&h('div',{style:{textAlign:'center',padding:28,color:'var(--slate-light)',fontSize:12}},'No BRDs found.'),rows.map(brd=>{const cr=crs.find(c=>c.id===brd.crId);return h('div',{key:brd.id,className:'brd-row'},Ic.file(null,18,18),h('div',{className:'brd-info'},h('div',{className:'brd-name'},brd.fileName),h('div',{className:'brd-meta'},'Linked: '+brd.crId+(cr?' — '+cr.title:'')+'  ·  '+fD(brd.uploadedAt)+'  ·  '+brd.size)),h('div',{style:{display:'flex',gap:5}},h('button',{className:'btn btn-secondary btn-sm'},Ic.eye(null,11,11),'Preview'),h('button',{className:'btn btn-secondary btn-sm'},Ic.download(null,11,11),'Download')));})
+  ));
+}
+
+/* AI DRAFTING */
+const RS_CHIPS=['Focus on functional requirements only','Include compliance and audit sections','Use formal regulatory language','Emphasise integration touchpoints','Add risk and dependency section'];
+const FS_CHIPS=['Detail process flow step by step','Include data validation rules','Add API endpoint descriptions','Write for senior developers','Include error handling scenarios'];
+function AiDrafting({crs,drafts,setDrafts,aiCr,setAiCr,user}){
+  const isPE=user.role==='Product Engineer';
+  const[selId,setSelId]=useState(aiCr?aiCr.id:'');
+  const[docType,setDocType]=useState(isPE?'FS':'RS');
+  const[prompt,setPrompt]=useState('');const[content,setContent]=useState('');const[generating,setGenerating]=useState(false);const[error,setError]=useState('');const[activeVerIdx,setActiveVerIdx]=useState(null);const[copied,setCopied]=useState(false);
+  const cr=crs.find(c=>c.id===selId)||null;
+  useEffect(()=>{if(aiCr){setSelId(aiCr.id);setContent('');setActiveVerIdx(null);};},[aiCr]);
+  const vers=drafts.filter(d=>d.crId===selId&&d.type===docType).slice().reverse();
+  function sysP(){if(!cr)return'';return`You are an expert business analyst. Write a professional ${docType==='RS'?'Requirements Specification':'Functional Specification'} for this CR.\nID: ${cr.id}\nTitle: ${cr.title}\nClient: ${cr.client}\nDescription: ${cr.description||'Not provided'}\nComplexity: ${cr.complexity||'TBD'} | Impact: ${cr.businessImpact} | Urgency: ${cr.urgency} | HLE: ${cr.hleSize||'TBD'} | Band: ${cr.band||'TBD'}\nPM: ${getPM(cr.assignedPm).name}\nOutput only the document, no preamble.`;}
+  async function generate(){
+    if(!cr){setError('Select a CR first.');return;}if(!prompt.trim()){setError('Enter a prompt first.');return;}
+    setError('');setGenerating(true);setContent('');setActiveVerIdx(null);
+    try{const result=await callClaude(sysP(),prompt.trim());setContent(result);const v={id:'v'+Date.now(),crId:selId,type:docType,content:result,prompt:prompt.trim(),version:drafts.filter(d=>d.crId===selId&&d.type===docType).length+1,createdAt:new Date().toISOString()};setDrafts(d=>[...d,v]);}catch(e){setError('Generation failed: '+e.message);}
+    setGenerating(false);
+  }
+  function loadVer(ver,idx){setContent(ver.content);setPrompt(ver.prompt||'');setActiveVerIdx(idx);}
+  function save(){if(!content.trim()||!selId)return;const v={id:'v'+Date.now(),crId:selId,type:docType,content,prompt:prompt.trim(),version:drafts.filter(d=>d.crId===selId&&d.type===docType).length+1,createdAt:new Date().toISOString()};setDrafts(d=>[...d,v]);setActiveVerIdx(null);}
+  function dl(text,name){const b=new Blob([text],{type:'text/plain'});const u=URL.createObjectURL(b);const a=document.createElement('a');a.href=u;a.download=name;a.click();URL.revokeObjectURL(u);}
+  function cp(){navigator.clipboard.writeText(content).then(()=>{setCopied(true);setTimeout(()=>setCopied(false),2000);});}
+  return h('div',null,
+    isPE&&h('div',{className:'info-banner',style:{marginBottom:14}},Ic.shield(null,15,15),h('span',null,'As a Product Engineer, you are responsible for finalising the FS draft. Once done, return to the CR detail page to mark it finalised.')),
+    h('div',{className:'setup-card'},
+      h('div',{className:'card-title'},Ic.doc(null,14,14),'Document Setup'),
+      h('div',{className:'alert-info'},'AI assists with drafting only. CR classification is always performed manually — no AI inference applied.'),
+      h('div',{className:'form-row'},
+        h('div',{className:'form-group'},h('label',null,'Change Request'),h('select',{value:selId,onChange:e=>{setSelId(e.target.value);setContent('');setActiveVerIdx(null);setError('');}},h('option',{value:''},'— Select a CR —'),crs.map(c=>h('option',{key:c.id,value:c.id},c.id+' — '+c.title+' ('+c.client+')')))),
+        h('div',{className:'form-group'},h('label',null,'Document Type'),h('select',{value:docType,onChange:e=>{setDocType(e.target.value);setContent('');setActiveVerIdx(null);setError('');}},h('option',{value:'RS'},'RS — Requirements Specification'),h('option',{value:'FS'},'FS — Functional Specification')))
+      ),
+      cr&&h('div',{className:'cr-context'},h('span',{style:{fontWeight:700,color:'var(--navy)'}},cr.id+' — '+cr.title),h('span',{style:{color:'var(--slate-light)'}},'·'),h('span',{style:{color:'var(--slate-light)'}},cr.client),cr.complexity&&h('span',{className:'badge badge-gray'},cr.complexity),h('span',{className:'badge badge-blue'},cr.businessImpact),cr.urgency==='High'&&h('span',{className:'badge badge-red'},'High Urgency'),cr.band&&h('span',{className:'badge '+bbCls(cr.band)},cr.band+' band'),vers.length>0&&h('span',{className:'diff-badge'},Ic.history(null,10,10),vers.length+' version'+(vers.length!==1?'s':'')))
+    ),
+    h('div',{className:'drafting-layout'},
+      h('div',null,
+        h('div',{className:'prompt-box'},
+          h('div',{className:'prompt-box-title'},Ic.pencil(null,13,13),'Your Prompt'),
+          h('textarea',{className:'prompt-textarea',value:prompt,onChange:e=>setPrompt(e.target.value),placeholder:docType==='RS'?'e.g. "Write a detailed RS focusing on authentication flows and role-based access control. Use formal language suitable for client review."':'e.g. "Write a technical FS with step-by-step process flows. Target senior developers."',rows:4}),
+          h('div',{className:'char-count'},prompt.length+' characters'),
+          h('div',{className:'prompt-chips'},(docType==='RS'?RS_CHIPS:FS_CHIPS).map(c=>h('button',{key:c,className:'prompt-chip',onClick:()=>setPrompt(p=>p?p.trim()+' '+c:c)},'+  '+c))),
+          h('div',{style:{display:'flex',gap:7,marginTop:11,flexWrap:'wrap'}},h('button',{className:'btn btn-primary',onClick:generate,disabled:generating||!selId},generating?h('div',{className:'spinner',style:{width:13,height:13}}):Ic.sparkle(null,13,13),generating?'Generating…':'Generate '+docType+' with AI'),content&&h('button',{className:'btn btn-secondary',onClick:save},Ic.save(null,13,13),'Save Version')),
+          error&&h('div',{className:'error-box'},error)
+        ),
+        h('div',{className:'draft-output'},
+          h('div',{className:'draft-output-header'},h('div',{className:'draft-output-header-left'},Ic.doc(null,13,13),docType+' Draft',activeVerIdx!==null&&h('span',{className:'diff-badge',style:{marginLeft:5}},Ic.history(null,10,10),'v'+vers[activeVerIdx]?.version),content&&!generating&&h('span',{style:{fontSize:10,color:'var(--slate-light)',fontWeight:400,marginLeft:4}},'— editable')),h('div',{className:'draft-output-actions'},content&&h('button',{className:'btn btn-secondary btn-sm',onClick:cp},Ic.copy(null,11,11),copied?'Copied!':'Copy'),content&&h('button',{className:'btn btn-success btn-sm',onClick:()=>dl(content,(selId||'CR')+'_'+docType+'_v'+(vers.length||1)+'.txt')},Ic.download(null,11,11),'Download .txt'))),
+          generating?h('div',{className:'generating-overlay'},h('div',{className:'spinner'}),h('span',null,'Generating '+docType+' draft…'),h('span',{style:{fontSize:11}},'Usually takes 10–20 seconds')):h('textarea',{className:'draft-textarea',value:content,onChange:e=>setContent(e.target.value),placeholder:'Your '+docType+' draft will appear here after generation.\n\nYou can also type directly to write or edit manually.'})
+        )
+      ),
+      h('div',{className:'ver-panel'},h('div',{className:'ver-panel-title'},Ic.history(null,13,13),'Version History',vers.length>0&&h('span',{className:'ver-count'},vers.length)),vers.length===0?h('div',{className:'empty-state'},selId?'No versions saved yet.\nGenerate or save a draft to start.':'Select a CR to see version history.'):vers.map((v,i)=>h('div',{key:v.id,className:'ver-item'+(activeVerIdx===i?' active-ver':''),onClick:()=>loadVer(v,i)},h('div',{className:'ver-item-header'},h('span',{className:'ver-num'},'Version '+v.version),h('span',{className:'ver-time'},fDT(v.createdAt))),h('div',{className:'ver-meta'},v.type+' · '+v.content.split(/\s+/).length+' words'),v.prompt&&h('div',{className:'ver-prompt'},'"'+v.prompt+'"'),h('div',{className:'ver-actions'},h('button',{className:'btn btn-secondary btn-sm',style:{fontSize:9.5,padding:'3px 7px'},onClick:e=>{e.stopPropagation();loadVer(v,i);}},Ic.restore(null,11,11),'Restore'),h('button',{className:'btn btn-secondary btn-sm',style:{fontSize:9.5,padding:'3px 7px'},onClick:e=>{e.stopPropagation();dl(v.content,v.crId+'_'+v.type+'_v'+v.version+'.txt');}},Ic.download(null,11,11),'Download')))))
+    )
+  );
+}
+
+/* ADMIN */
+function Admin({settings,setSettings,user}){
+  const[local,setLocal]=useState({...settings}),[saved,setSaved]=useState(false);
+  if(user.role!=='Admin')return h('div',{className:'card'},h('div',{className:'role-restricted'},Ic.lock(null,15,15),'Admin Settings are only accessible to Admin role users.'));
+  function save(){setSettings({...local});setSaved(true);setTimeout(()=>setSaved(false),2000);}
+  function ar(label,key){return h('div',{className:'admin-row'},h('label',null,label),h('input',{type:'number',min:0,value:local[key],onChange:e=>setLocal(l=>({...l,[key]:Number(e.target.value)})),style:{width:70}}));}
+  return h('div',null,h('div',{className:'card section-gap'},h('div',{className:'card-title'},Ic.list(null,14,14),'Scoring Thresholds'),h('div',{className:'alert-info'},'Adjust score ranges for Low, Medium, and High estimation bands.'),ar('Low Band — Min','score_low_min'),ar('Low Band — Max','score_low_max'),ar('Medium Band — Min','score_med_min'),ar('Medium Band — Max','score_med_max'),ar('High Band — Min','score_high_min'),ar('High Band — Max','score_high_max')),h('div',{className:'card section-gap'},h('div',{className:'card-title'},Ic.clock(null,14,14),'Timeline Values (Days)'),h('div',{className:'form-row-3'},h('div',null,h('div',{style:{fontSize:10,fontWeight:700,color:'var(--navy)',marginBottom:7,paddingBottom:5,borderBottom:'1px solid var(--border)',textTransform:'uppercase',letterSpacing:'.4px'}},'Low Band'),ar('BRD','low_brd'),ar('RS','low_rs'),ar('FS','low_fs'),ar('HLE','low_hle')),h('div',null,h('div',{style:{fontSize:10,fontWeight:700,color:'var(--navy)',marginBottom:7,paddingBottom:5,borderBottom:'1px solid var(--border)',textTransform:'uppercase',letterSpacing:'.4px'}},'Medium Band'),ar('BRD','med_brd'),ar('RS','med_rs'),ar('FS','med_fs'),ar('HLE','med_hle')),h('div',null,h('div',{style:{fontSize:10,fontWeight:700,color:'var(--navy)',marginBottom:7,paddingBottom:5,borderBottom:'1px solid var(--border)',textTransform:'uppercase',letterSpacing:'.4px'}},'High Band'),ar('BRD','high_brd'),ar('RS','high_rs'),ar('FS','high_fs'),ar('HLE','high_hle')))),h('div',{style:{display:'flex',gap:9,alignItems:'center'}},h('button',{className:'btn btn-primary',onClick:save},Ic.save(null,13,13),'Save Settings'),saved&&h('span',{style:{fontSize:11.5,color:'var(--green)',display:'flex',alignItems:'center',gap:4}},Ic.check(null,13,13),'Saved')));
+}
+
+/* PM MODAL */
+function PmModal({pm,crs,onClose}){
+  const pCrs=crs.filter(c=>c.assignedPm===pm.id),act=pCrs.filter(c=>c.status!=='Closed'),av=pmAvail(crs,pm.id),ws=wlSt(crs,pm.id);
+  return h('div',{className:'modal-overlay',onClick:onClose},h('div',{className:'modal',onClick:e=>e.stopPropagation()},
+    h('div',{className:'modal-header'},h('div',{style:{display:'flex',alignItems:'center',gap:10}},h('div',{className:'pm-avatar',style:{background:pm.color,color:'#fff',width:36,height:36}},pm.initials),h('div',null,h('div',{style:{fontSize:14,fontWeight:700,color:'var(--navy)'}},pm.name),h('div',{style:{fontSize:11,color:'var(--slate-light)'}},pm.email))),h('button',{className:'close-btn',onClick:onClose},Ic.close(null,13,13))),
+    h('div',{className:'modal-body'},
+      h('div',{style:{display:'flex',gap:9,marginBottom:14}},h('div',{style:{flex:1,background:'#f8fafc',borderRadius:7,padding:11}},h('div',{style:{fontSize:9.5,color:'var(--slate-light)',textTransform:'uppercase',letterSpacing:'.5px'}},'Active CR Load'),h('div',{style:{fontSize:22,fontWeight:700,color:'var(--navy)'}},act.length)),h('div',{style:{flex:1,background:'#f8fafc',borderRadius:7,padding:11}},h('div',{style:{fontSize:9.5,color:'var(--slate-light)',textTransform:'uppercase',letterSpacing:'.5px',marginBottom:5}},'Workload'),h('span',{className:'badge '+ws.cls},ws.label)),h('div',{style:{flex:2,background:'#f8fafc',borderRadius:7,padding:11}},h('div',{style:{fontSize:9.5,color:'var(--slate-light)',textTransform:'uppercase',letterSpacing:'.5px'}},'Expected Availability'),h('div',{style:{fontSize:13,fontWeight:700,color:av.label==='Available Now'?'var(--green)':'var(--navy)'}},av.label==='Available Now'?'Available Now':fD(av.date)))),
+      h('div',{style:{fontWeight:700,fontSize:11,color:'var(--navy)',marginBottom:7,textTransform:'uppercase',letterSpacing:'.4px'}},'Assigned CRs'),
+      pCrs.length===0&&h('div',{style:{color:'var(--slate-light)',fontSize:12}},'No CRs assigned.'),
+      pCrs.map(cr=>h('div',{key:cr.id,style:{border:'1px solid var(--border)',borderRadius:7,padding:11,marginBottom:7}},h('div',{style:{display:'flex',justifyContent:'space-between',marginBottom:4}},h('div',null,h('span',{style:{fontWeight:700,color:'var(--blue)',fontSize:10.5,fontFamily:'monospace'}},'#'+cr.id),h('span',{style:{marginLeft:6,fontWeight:600,fontSize:12.5}},cr.title)),h('span',{className:'badge '+sbCls(cr.status)},cr.status)),h('div',{style:{display:'flex',gap:7,flexWrap:'wrap',fontSize:10.5,alignItems:'center'}},h('span',{className:'stage-badge'},cr.currentStage),h('span',{style:{color:'var(--slate-light)'}},'Est: '+fD(cr.estimatedCompletionDate)))))
+    )
+  ));
+}
+
+ReactDOM.render(R.createElement(App),document.getElementById('root'));
+</script>
+</body>
+</html>
