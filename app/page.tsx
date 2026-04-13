@@ -320,8 +320,6 @@ function GanttChart({ items }: { items: UseCaseItem[] }) {
                     {/* Bar row */}
                     <div className="relative h-8 w-full rounded-xl bg-slate-50">
                      <div
-  <div
- <div
   className={cn('absolute h-full rounded-xl opacity-90 transition-all cursor-pointer group/bar', barColor)}
   style={{ left: `${Math.max(0, leftPct)}%`, width: `${Math.min(100 - Math.max(0, leftPct), widthPct)}%` }}
 >
