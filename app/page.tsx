@@ -218,7 +218,6 @@ function Drawer({ open, onClose, children }: { open: boolean; onClose: () => voi
 }
 
 // ── Gantt Chart ──────────────────────────────────────────────────────────────
-
 function GanttChart({ items }: { items: UseCaseItem[] }) {
   const validItems = items.filter((i) => i.start_date && i.end_date);
   if (validItems.length === 0) return (
@@ -230,15 +229,11 @@ function GanttChart({ items }: { items: UseCaseItem[] }) {
   const allDates = validItems.flatMap((i) => [new Date(i.start_date), new Date(i.end_date)]);
   const minDate = new Date(Math.min(...allDates.map((d) => d.getTime())));
   const maxDate = new Date(Math.max(...allDates.map((d) => d.getTime())));
-
-  // Round to month boundaries
   minDate.setDate(1);
   maxDate.setMonth(maxDate.getMonth() + 1);
   maxDate.setDate(0);
-
   const totalDays = (maxDate.getTime() - minDate.getTime()) / (1000 * 60 * 60 * 24);
 
-  // Build month labels
   const months: { label: string; left: number; width: number }[] = [];
   const cursor = new Date(minDate);
   while (cursor <= maxDate) {
@@ -246,15 +241,10 @@ function GanttChart({ items }: { items: UseCaseItem[] }) {
     const monthEnd = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 0);
     const left = Math.max(0, (monthStart.getTime() - minDate.getTime()) / (1000 * 60 * 60 * 24) / totalDays * 100);
     const end = Math.min(100, (monthEnd.getTime() - minDate.getTime()) / (1000 * 60 * 60 * 24) / totalDays * 100);
-    months.push({
-      label: cursor.toLocaleDateString('en-GB', { month: 'short', year: '2-digit' }),
-      left,
-      width: end - left,
-    });
+    months.push({ label: cursor.toLocaleDateString('en-GB', { month: 'short', year: '2-digit' }), left, width: end - left });
     cursor.setMonth(cursor.getMonth() + 1);
   }
 
-  // Today marker
   const today = new Date();
   const todayPct = Math.min(100, Math.max(0, (today.getTime() - minDate.getTime()) / (1000 * 60 * 60 * 24) / totalDays * 100));
   const showToday = today >= minDate && today <= maxDate;
@@ -270,75 +260,58 @@ function GanttChart({ items }: { items: UseCaseItem[] }) {
       <div className="p-6">
         <div className="overflow-x-auto">
           <div style={{ minWidth: '600px' }}>
-            {/* Month headers */}
             <div className="relative mb-3 ml-48 h-6">
               {months.map((m, i) => (
-                <div
-                  key={i}
-                  className="absolute text-xs text-slate-400"
-                  style={{ left: `${m.left}%`, width: `${m.width}%` }}
-                >
+                <div key={i} className="absolute text-xs text-slate-400" style={{ left: `${m.left}%`, width: `${m.width}%` }}>
                   {m.label}
                 </div>
               ))}
             </div>
-
-            {/* Grid + bars */}
             <div className="relative ml-48 space-y-3">
-              {/* Month grid lines */}
               {months.map((m, i) => (
-                <div
-                  key={i}
-                  className="pointer-events-none absolute top-0 bottom-0 border-l border-slate-100"
-                  style={{ left: `${m.left}%` }}
-                />
+                <div key={i} className="pointer-events-none absolute top-0 bottom-0 border-l border-slate-100" style={{ left: `${m.left}%` }} />
               ))}
-
-              {/* Today line */}
               {showToday && (
-                <div
-                  className="pointer-events-none absolute top-0 bottom-0 z-10 border-l-2 border-indigo-400"
-                  style={{ left: `${todayPct}%` }}
-                >
+                <div className="pointer-events-none absolute top-0 bottom-0 z-10 border-l-2 border-indigo-400" style={{ left: `${todayPct}%` }}>
                   <span className="absolute -top-6 -translate-x-1/2 rounded bg-indigo-400 px-1.5 py-0.5 text-xs text-white">Today</span>
                 </div>
               )}
-
               {validItems.map((item) => {
                 const start = new Date(item.start_date);
                 const end = new Date(item.end_date);
                 const leftPct = (start.getTime() - minDate.getTime()) / (1000 * 60 * 60 * 24) / totalDays * 100;
                 const widthPct = (end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24) / totalDays * 100;
                 const barColor = statusBarColors[item.status] ?? 'bg-slate-400';
-
                 return (
                   <div key={item.id} className="flex items-center gap-0">
-                    {/* Label — sits to the LEFT of the ml-48 container, so we use negative offset */}
                     <div className="absolute -ml-48 w-44 truncate pr-3 text-right text-sm text-slate-700" title={item.name}>
                       {item.name}
                     </div>
-                    {/* Bar row */}
-<div className="relative h-8 w-full rounded-xl bg-slate-50 overflow-visible">
-  <div
-    className={cn('absolute h-full rounded-xl opacity-90 transition-all cursor-pointer group/bar', barColor)}
-    style={{ left: `${Math.max(0, leftPct)}%`, width: `${Math.min(100 - Math.max(0, leftPct), widthPct)}%` }}
-  >
-    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 hidden group-hover/bar:flex z-20 flex-col items-center">
-      <div className="rounded-2xl bg-slate-900 shadow-xl px-4 py-2.5 text-xs whitespace-nowrap">
-        <p className="font-semibold text-white">{item.status}</p>
-        <p className="text-slate-400 mt-0.5">{item.start_date} → {item.end_date}</p>
-      </div>
-      <div className="w-2.5 h-2.5 bg-slate-900 rotate-45 -mt-1.5" />
-    </div>
-  </div>
-            {/* Legend */}
-            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 hidden group-hover/bar:flex z-20 flex-col items-center">
-  <div className="rounded-2xl bg-slate-900 shadow-xl px-4 py-2.5 text-xs whitespace-nowrap">
-    <p className="font-semibold text-white">{item.status}</p>
-    <p className="text-slate-400 mt-0.5">{item.start_date} → {item.end_date}</p>
-  </div>
-  <div className="w-2.5 h-2.5 bg-slate-900 rotate-45 -mt-1.5" />
-</div>
+                    <div className="relative h-8 w-full rounded-xl bg-slate-50 overflow-visible">
+                      <div
+                        className={cn('absolute h-full rounded-xl opacity-90 transition-all cursor-pointer group/bar', barColor)}
+                        style={{ left: `${Math.max(0, leftPct)}%`, width: `${Math.min(100 - Math.max(0, leftPct), widthPct)}%` }}
+                      >
+                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 hidden group-hover/bar:flex z-20 flex-col items-center">
+                          <div className="rounded-2xl bg-slate-900 shadow-xl px-4 py-2.5 text-xs whitespace-nowrap">
+                            <p className="font-semibold text-white">{item.status}</p>
+                            <p className="text-slate-400 mt-0.5">{item.start_date} → {item.end_date}</p>
+                          </div>
+                          <div className="w-2.5 h-2.5 bg-slate-900 rotate-45 -mt-1.5" />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="mt-6 flex flex-wrap gap-3">
+              {Object.entries(statusBarColors).map(([status, color]) => (
+                <div key={status} className="flex items-center gap-1.5 text-xs text-slate-500">
+                  <div className={cn('h-3 w-3 rounded-full', color)} />
+                  {status}
+                </div>
+              ))}
             </div>
           </div>
         </div>
