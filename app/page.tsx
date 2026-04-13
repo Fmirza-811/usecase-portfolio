@@ -341,13 +341,13 @@ function GanttChart({ items }: { items: UseCaseItem[] }) {
             </div>
 
             {/* Legend */}
-            <div className="mt-6 flex flex-wrap gap-3">
-              {Object.entries(statusBarColors).map(([status, color]) => (
-                <div key={status} className="flex items-center gap-1.5 text-xs text-slate-500">
-                  <div className={cn('h-3 w-3 rounded-full', color)} />
-                  {status}
-                </div>
-              ))}
+            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 hidden group-hover/bar:flex z-20 flex-col items-center">
+  <div className="rounded-2xl bg-slate-900 shadow-xl px-4 py-2.5 text-xs whitespace-nowrap">
+    <p className="font-semibold text-white">{item.status}</p>
+    <p className="text-slate-400 mt-0.5">{item.start_date} → {item.end_date}</p>
+  </div>
+  <div className="w-2.5 h-2.5 bg-slate-900 rotate-45 -mt-1.5" />
+</div>
             </div>
           </div>
         </div>
