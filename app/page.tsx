@@ -257,8 +257,8 @@ function GanttChart({ items }: { items: UseCaseItem[] }) {
           <h3 className="font-semibold text-slate-900">Timeline</h3>
         </div>
       </div>
-      <div className="p-6 overflow-visible">
-        <div className="overflow-x-auto overflow-y-visible">
+      <div className="p-6">
+        <div className="overflow-x-auto">
           <div style={{ minWidth: '600px' }}>
             <div className="relative mb-3 ml-48 h-6">
               {months.map((m, i) => (
@@ -267,7 +267,7 @@ function GanttChart({ items }: { items: UseCaseItem[] }) {
                 </div>
               ))}
             </div>
-            <div className="relative ml-48 space-y-3 overflow-visible">
+            <div className="relative ml-48 space-y-3">
               {months.map((m, i) => (
                 <div key={i} className="pointer-events-none absolute top-0 bottom-0 border-l border-slate-100" style={{ left: `${m.left}%` }} />
               ))}
@@ -287,19 +287,12 @@ function GanttChart({ items }: { items: UseCaseItem[] }) {
                     <div className="absolute -ml-48 w-44 truncate pr-3 text-right text-sm text-slate-700" title={item.name}>
                       {item.name}
                     </div>
-                    <div className="relative h-8 w-full rounded-xl bg-slate-50 overflow-visible">
+                    <div className="relative h-8 w-full rounded-xl bg-slate-50">
                       <div
-                        className={cn('absolute h-full rounded-xl opacity-90 transition-all cursor-pointer group/bar', barColor)}
+                        className={cn('absolute h-full rounded-xl opacity-90 transition-all cursor-pointer', barColor)}
                         style={{ left: `${Math.max(0, leftPct)}%`, width: `${Math.min(100 - Math.max(0, leftPct), widthPct)}%` }}
-                      >
-                        <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 hidden group-hover/bar:flex z-20 flex-col items-center">
-                          <div className="rounded-2xl bg-slate-900 shadow-xl px-4 py-2.5 text-xs whitespace-nowrap">
-                            <p className="font-semibold text-white">{item.status}</p>
-                            <p className="text-slate-400 mt-0.5">{item.start_date} → {item.end_date}</p>
-                          </div>
-                          <div className="w-2.5 h-2.5 bg-slate-900 rotate-45 -mb-1.5 order-first" />
-                        </div>
-                      </div>
+                        title={`${item.status} | ${item.start_date} → ${item.end_date}`}
+                      />
                     </div>
                   </div>
                 );
@@ -319,7 +312,6 @@ function GanttChart({ items }: { items: UseCaseItem[] }) {
     </Card>
   );
 }
-
 // ── Form ─────────────────────────────────────────────────────────────────────
 
 const emptyForm: UseCaseItem = {
