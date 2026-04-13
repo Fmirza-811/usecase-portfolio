@@ -320,10 +320,15 @@ function GanttChart({ items }: { items: UseCaseItem[] }) {
                     {/* Bar row */}
                     <div className="relative h-8 w-full rounded-xl bg-slate-50">
                      <div
-  className={cn('absolute h-full rounded-xl opacity-90 transition-all cursor-pointer', barColor)}
+  <div
+  className={cn('absolute h-full rounded-xl opacity-90 transition-all cursor-pointer group/bar', barColor)}
   style={{ left: `${Math.max(0, leftPct)}%`, width: `${Math.min(100 - Math.max(0, leftPct), widthPct)}%` }}
-  title={`${item.status} | ${item.start_date} → ${item.end_date}`}
-/>
+>
+  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover/bar:block z-20 whitespace-nowrap rounded-xl bg-slate-900 px-3 py-1.5 text-xs text-white shadow-lg">
+    {item.status} · {item.start_date} → {item.end_date}
+  </div>
+</div>
+/
                     </div>
                   </div>
                 );
