@@ -219,6 +219,8 @@ function Drawer({ open, onClose, children }: { open: boolean; onClose: () => voi
 
 // ── Gantt Chart ──────────────────────────────────────────────────────────────
 function GanttChart({ items }: { items: UseCaseItem[] }) {
+  const [tooltip, setTooltip] = useState<{ x: number; y: number; item: UseCaseItem } | null>(null);
+
   const validItems = items.filter((i) => i.start_date && i.end_date);
   if (validItems.length === 0) return (
     <Card className="rounded-[28px]">
@@ -250,66 +252,81 @@ function GanttChart({ items }: { items: UseCaseItem[] }) {
   const showToday = today >= minDate && today <= maxDate;
 
   return (
-    <Card className="overflow-hidden rounded-[28px]">
-      <div className="border-b border-slate-100 px-6 py-4">
-        <div className="flex items-center gap-2">
-          <BarChart2 className="h-5 w-5 text-slate-500" />
-          <h3 className="font-semibold text-slate-900">Timeline</h3>
+    <>
+      {tooltip && (
+        <div
+          className="fixed z-50 pointer-events-none"
+          style={{ left: tooltip.x + 12, top: tooltip.y - 60 }}
+        >
+          <div className="rounded-2xl bg-slate-900 shadow-2xl px-4 py-3 text-xs">
+            <p className="font-semibold text-white text-sm">{tooltip.item.status}</p>
+            <p className="text-slate-400 mt-1">{tooltip.item.start_date} → {tooltip.item.end_date}</p>
+          </div>
         </div>
-      </div>
-      <div className="p-6">
-        <div className="overflow-x-auto">
-          <div style={{ minWidth: '600px' }}>
-            <div className="relative mb-3 ml-48 h-6">
-              {months.map((m, i) => (
-                <div key={i} className="absolute text-xs text-slate-400" style={{ left: `${m.left}%`, width: `${m.width}%` }}>
-                  {m.label}
-                </div>
-              ))}
-            </div>
-            <div className="relative ml-48 space-y-3">
-              {months.map((m, i) => (
-                <div key={i} className="pointer-events-none absolute top-0 bottom-0 border-l border-slate-100" style={{ left: `${m.left}%` }} />
-              ))}
-              {showToday && (
-                <div className="pointer-events-none absolute top-0 bottom-0 z-10 border-l-2 border-indigo-400" style={{ left: `${todayPct}%` }}>
-                  <span className="absolute -top-6 -translate-x-1/2 rounded bg-indigo-400 px-1.5 py-0.5 text-xs text-white">Today</span>
-                </div>
-              )}
-              {validItems.map((item) => {
-                const start = new Date(item.start_date);
-                const end = new Date(item.end_date);
-                const leftPct = (start.getTime() - minDate.getTime()) / (1000 * 60 * 60 * 24) / totalDays * 100;
-                const widthPct = (end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24) / totalDays * 100;
-                const barColor = statusBarColors[item.status] ?? 'bg-slate-400';
-                return (
-                  <div key={item.id} className="flex items-center gap-0">
-                    <div className="absolute -ml-48 w-44 truncate pr-3 text-right text-sm text-slate-700" title={item.name}>
-                      {item.name}
-                    </div>
-                    <div className="relative h-8 w-full rounded-xl bg-slate-50">
-                      <div
-                        className={cn('absolute h-full rounded-xl opacity-90 transition-all cursor-pointer', barColor)}
-                        style={{ left: `${Math.max(0, leftPct)}%`, width: `${Math.min(100 - Math.max(0, leftPct), widthPct)}%` }}
-                        title={`${item.status} | ${item.start_date} → ${item.end_date}`}
-                      />
-                    </div>
+      )}
+      <Card className="overflow-hidden rounded-[28px]">
+        <div className="border-b border-slate-100 px-6 py-4">
+          <div className="flex items-center gap-2">
+            <BarChart2 className="h-5 w-5 text-slate-500" />
+            <h3 className="font-semibold text-slate-900">Timeline</h3>
+          </div>
+        </div>
+        <div className="p-6">
+          <div className="overflow-x-auto">
+            <div style={{ minWidth: '600px' }}>
+              <div className="relative mb-3 ml-48 h-6">
+                {months.map((m, i) => (
+                  <div key={i} className="absolute text-xs text-slate-400" style={{ left: `${m.left}%`, width: `${m.width}%` }}>
+                    {m.label}
                   </div>
-                );
-              })}
-            </div>
-            <div className="mt-6 flex flex-wrap gap-3">
-              {Object.entries(statusBarColors).map(([status, color]) => (
-                <div key={status} className="flex items-center gap-1.5 text-xs text-slate-500">
-                  <div className={cn('h-3 w-3 rounded-full', color)} />
-                  {status}
-                </div>
-              ))}
+                ))}
+              </div>
+              <div className="relative ml-48 space-y-3">
+                {months.map((m, i) => (
+                  <div key={i} className="pointer-events-none absolute top-0 bottom-0 border-l border-slate-100" style={{ left: `${m.left}%` }} />
+                ))}
+                {showToday && (
+                  <div className="pointer-events-none absolute top-0 bottom-0 z-10 border-l-2 border-indigo-400" style={{ left: `${todayPct}%` }}>
+                    <span className="absolute -top-6 -translate-x-1/2 rounded bg-indigo-400 px-1.5 py-0.5 text-xs text-white">Today</span>
+                  </div>
+                )}
+                {validItems.map((item) => {
+                  const start = new Date(item.start_date);
+                  const end = new Date(item.end_date);
+                  const leftPct = (start.getTime() - minDate.getTime()) / (1000 * 60 * 60 * 24) / totalDays * 100;
+                  const widthPct = (end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24) / totalDays * 100;
+                  const barColor = statusBarColors[item.status] ?? 'bg-slate-400';
+                  return (
+                    <div key={item.id} className="flex items-center gap-0">
+                      <div className="absolute -ml-48 w-44 truncate pr-3 text-right text-sm text-slate-700" title={item.name}>
+                        {item.name}
+                      </div>
+                      <div className="relative h-8 w-full rounded-xl bg-slate-50">
+                        <div
+                          className={cn('absolute h-full rounded-xl opacity-90 transition-all cursor-pointer', barColor)}
+                          style={{ left: `${Math.max(0, leftPct)}%`, width: `${Math.min(100 - Math.max(0, leftPct), widthPct)}%` }}
+                          onMouseEnter={(e) => setTooltip({ x: e.clientX, y: e.clientY, item })}
+                          onMouseMove={(e) => setTooltip({ x: e.clientX, y: e.clientY, item })}
+                          onMouseLeave={() => setTooltip(null)}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="mt-6 flex flex-wrap gap-3">
+                {Object.entries(statusBarColors).map(([status, color]) => (
+                  <div key={status} className="flex items-center gap-1.5 text-xs text-slate-500">
+                    <div className={cn('h-3 w-3 rounded-full', color)} />
+                    {status}
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </div>
-      </div>
-    </Card>
+      </Card>
+    </>
   );
 }
 // ── Form ─────────────────────────────────────────────────────────────────────
