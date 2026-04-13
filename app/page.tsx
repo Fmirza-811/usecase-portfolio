@@ -257,8 +257,8 @@ function GanttChart({ items }: { items: UseCaseItem[] }) {
           <h3 className="font-semibold text-slate-900">Timeline</h3>
         </div>
       </div>
-      <div className="p-6">
-        <div className="overflow-x-auto">
+      <div className="p-6 overflow-visible">
+        <div className="overflow-x-auto overflow-y-visible">
           <div style={{ minWidth: '600px' }}>
             <div className="relative mb-3 ml-48 h-6">
               {months.map((m, i) => (
