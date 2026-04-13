@@ -267,7 +267,7 @@ function GanttChart({ items }: { items: UseCaseItem[] }) {
                 </div>
               ))}
             </div>
-            <div className="relative ml-48 space-y-3">
+            <div className="relative ml-48 space-y-3 overflow-visible">
               {months.map((m, i) => (
                 <div key={i} className="pointer-events-none absolute top-0 bottom-0 border-l border-slate-100" style={{ left: `${m.left}%` }} />
               ))}
