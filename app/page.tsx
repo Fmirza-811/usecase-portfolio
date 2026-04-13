@@ -318,26 +318,19 @@ function GanttChart({ items }: { items: UseCaseItem[] }) {
                       {item.name}
                     </div>
                     {/* Bar row */}
-                    <div className="relative h-8 w-full rounded-xl bg-slate-50">
-                     <div
-  className={cn('absolute h-full rounded-xl opacity-90 transition-all cursor-pointer group/bar', barColor)}
-  style={{ left: `${Math.max(0, leftPct)}%`, width: `${Math.min(100 - Math.max(0, leftPct), widthPct)}%` }}
->
-  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover/bar:flex z-20 flex-col items-center">
-    <div className="rounded-2xl bg-white border border-slate-200 shadow-lg px-4 py-2 text-xs text-slate-700 whitespace-nowrap">
-      <p className="font-semibold text-slate-900">{item.status}</p>
-      <p className="text-slate-500 mt-0.5">{item.start_date} → {item.end_date}</p>
+<div className="relative h-8 w-full rounded-xl bg-slate-50 overflow-visible">
+  <div
+    className={cn('absolute h-full rounded-xl opacity-90 transition-all cursor-pointer group/bar', barColor)}
+    style={{ left: `${Math.max(0, leftPct)}%`, width: `${Math.min(100 - Math.max(0, leftPct), widthPct)}%` }}
+  >
+    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 hidden group-hover/bar:flex z-20 flex-col items-center">
+      <div className="rounded-2xl bg-slate-900 shadow-xl px-4 py-2.5 text-xs whitespace-nowrap">
+        <p className="font-semibold text-white">{item.status}</p>
+        <p className="text-slate-400 mt-0.5">{item.start_date} → {item.end_date}</p>
+      </div>
+      <div className="w-2.5 h-2.5 bg-slate-900 rotate-45 -mt-1.5" />
     </div>
-    <div className="w-2 h-2 bg-white border-r border-b border-slate-200 rotate-45 -mt-1" />
   </div>
-</div>
-/
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
             {/* Legend */}
             <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 hidden group-hover/bar:flex z-20 flex-col items-center">
   <div className="rounded-2xl bg-slate-900 shadow-xl px-4 py-2.5 text-xs whitespace-nowrap">
