@@ -771,18 +771,32 @@ export default function UseCasePortfolioApp() {
                     </Card>
                   )}
                 </div>
-                <Card className="border border-slate-200 shadow-none">
-                  <CardHeader><CardTitle>Description</CardTitle></CardHeader>
-                  <CardContent><p className="leading-7 text-slate-700">{activeItem.description}</p></CardContent>
-                </Card>
-                <Card className="border border-slate-200 shadow-none">
-                  <CardHeader><CardTitle>Expected impact</CardTitle></CardHeader>
-                  <CardContent><p className="leading-7 text-slate-700">{activeItem.impact}</p></CardContent>
-                </Card>
-                <Card className="border border-slate-200 shadow-none">
-                  <CardHeader><CardTitle>Notes and execution context</CardTitle></CardHeader>
-                  <CardContent><p className="leading-7 text-slate-700">{activeItem.notes}</p></CardContent>
-                </Card>
+            {activeItem.description && (
+  <Card className="border border-slate-200 shadow-none">
+    <CardContent className="p-5">
+      <p className="text-sm font-semibold text-slate-900 mb-2">Description</p>
+      <p className="leading-7 text-slate-700">{activeItem.description}</p>
+    </CardContent>
+  </Card>
+)}
+
+{activeItem.impact && (
+  <Card className="border border-slate-200 shadow-none">
+    <CardContent className="p-5">
+      <p className="text-sm font-semibold text-slate-900 mb-2">Expected impact</p>
+      <p className="leading-7 text-slate-700">{activeItem.impact}</p>
+    </CardContent>
+  </Card>
+)}
+
+{activeItem.notes && (
+  <Card className="border border-slate-200 shadow-none">
+    <CardContent className="p-5">
+      <p className="text-sm font-semibold text-slate-900 mb-2">Notes and execution context</p>
+      <p className="leading-7 text-slate-700">{activeItem.notes}</p>
+    </CardContent>
+  </Card>
+)}
                 {isEditor && (
                   <div className="flex gap-3">
                     <Button disabled={saving} onClick={() => { setEditingItem(activeItem); setFormOpen(true); }} type="button">
