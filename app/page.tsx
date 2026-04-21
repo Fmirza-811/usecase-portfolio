@@ -457,16 +457,17 @@ function AIPanel({ open, onClose, selectedUseCase, onScoreSaved }: {
   <label className="mb-2 block text-sm font-medium text-slate-700">Select Use Case to Score</label>
  <select
   className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 outline-none focus:border-slate-300"
+ <select
+  className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 outline-none focus:border-slate-300"
   value={selectedForScoring?.id ?? ''}
   onChange={(e) => {
     const found = allUseCases.find((u) => u.id === e.target.value) ?? null;
     setSelectedForScoring(found);
   }}
 >
+  <option value="">Choose a use case...</option>
+  {allUseCases.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
 </select>
-    <option value="">Choose a use case...</option>
-    {allUseCases.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
-  </Select>
 </div>
             <div className="space-y-2">
               <div className="flex items-center justify-between">
