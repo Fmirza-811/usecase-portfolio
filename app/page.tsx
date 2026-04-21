@@ -333,9 +333,10 @@ function GanttChart({ items }: { items: UseCaseItem[] }) {
 }
 
 // ── AI Panel ──────────────────────────────────────────────────────────────────
-function AIPanel({ open, onClose, selectedUseCase, onScoreSaved }: {
-  open: boolean; onClose: () => void;
-  selectedUseCase: UseCaseItem | null;
+function AIPanel({ open, onClose, allUseCases, onScoreSaved }: {
+  open: boolean;
+  onClose: () => void;
+  allUseCases: UseCaseItem[];
   onScoreSaved: (id: string, score: string) => void;
 }) {
   const [activeTab, setActiveTab] = useState<AITab>('chat');
@@ -343,6 +344,7 @@ function AIPanel({ open, onClose, selectedUseCase, onScoreSaved }: {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [weights, setWeights] = useState<ScoreWeights>(defaultWeights);
+  const [selectedForScoring, setSelectedForScoring] = useState<UseCaseItem | null>(null);
   const [scoreResult, setScoreResult] = useState<{ total: number; breakdown: Record<string, number>; reasoning: string } | null>(null);
   const [scoring, setScoring] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -351,9 +353,11 @@ function AIPanel({ open, onClose, selectedUseCase, onScoreSaved }: {
 
   useEffect(() => {
     if (open && messages.length === 0) {
-      setMessages([{ role: 'assistant', content: `Hi! I'm here to help you define, document, and evaluate AI use cases. ${selectedUseCase ? `I can see you're looking at **${selectedUseCase.name}**. ` : ''}Tell me about a use case and I'll help you understand it, generate a BRD, or score it.` }]);
+      setMessages([{ role: 'assistant', content: "Hi! I'm here to help you define, document, and evaluate AI use cases. Tell me about a use case and I'll help you understand it, generate a BRD, or score it." }]);
     }
   }, [open]);
+
+  useEffect(() => { setScoreResult(null); }, [selectedForScoring]);
 
   const totalWeight = Object.values(weights).reduce((a, b) => a + b, 0);
 
@@ -378,17 +382,17 @@ function AIPanel({ open, onClose, selectedUseCase, onScoreSaved }: {
   };
 
   const scoreUseCase = async () => {
-    if (!selectedUseCase) return;
+    if (!selectedForScoring) return;
     setScoring(true);
     try {
       const res = await fetch('/api/ai', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'score', useCase: selectedUseCase, weights }),
+        body: JSON.stringify({ action: 'score', useCase: selectedForScoring, weights }),
       });
       const data = await res.json();
       setScoreResult(data);
-      onScoreSaved(selectedUseCase.id, String(data.total));
+      onScoreSaved(selectedForScoring.id, String(data.total));
     } catch {
       alert('Scoring failed. Please try again.');
     }
@@ -399,7 +403,6 @@ function AIPanel({ open, onClose, selectedUseCase, onScoreSaved }: {
     <div className={cn('fixed inset-0 z-50 transition', open ? 'pointer-events-auto' : 'pointer-events-none')}>
       <div className={cn('absolute inset-0 bg-slate-900/40 transition-opacity', open ? 'opacity-100' : 'opacity-0')} onClick={onClose} />
       <div className={cn('absolute right-0 top-0 h-full w-full max-w-2xl bg-white shadow-2xl transition-transform flex flex-col', open ? 'translate-x-0' : 'translate-x-full')}>
-        {/* Header */}
         <div className="bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 px-6 py-5 text-white">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -421,13 +424,12 @@ function AIPanel({ open, onClose, selectedUseCase, onScoreSaved }: {
           </div>
         </div>
 
-        {/* Chat Tab */}
         {activeTab === 'chat' && (
           <>
             <div className="flex-1 overflow-y-auto p-6 space-y-4">
               {messages.map((m, i) => (
                 <div key={i} className={cn('flex', m.role === 'user' ? 'justify-end' : 'justify-start')}>
-                  <div className={cn('max-w-[80%] rounded-3xl px-4 py-3 text-sm leading-6', m.role === 'user' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-800')}>
+                  <div className={cn('max-w-[80%] rounded-3xl px-4 py-3 text-sm leading-6 whitespace-pre-wrap', m.role === 'user' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-800')}>
                     {m.content}
                   </div>
                 </div>
@@ -450,23 +452,24 @@ function AIPanel({ open, onClose, selectedUseCase, onScoreSaved }: {
           </>
         )}
 
-        {/* Score Tab */}
         {activeTab === 'score' && (
           <div className="flex-1 overflow-y-auto p-6 space-y-6">
-<div>
-  <label className="mb-2 block text-sm font-medium text-slate-700">Select Use Case to Score</label>
- <select
-  className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 outline-none focus:border-slate-300"
-  value={selectedForScoring?.id ?? ''}
-  onChange={(e) => {
-    const found = allUseCases.find((u) => u.id === e.target.value) ?? null;
-    setSelectedForScoring(found);
-  }}
->
-  <option value="">Choose a use case...</option>
-  {allUseCases.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
-</select>
-</div>
+            <div>
+              <label className="mb-2 block text-sm font-medium text-slate-700">Select use case to score</label>
+              <Select
+                value={selectedForScoring?.id ?? ''}
+                onChange={(e) => {
+                  const found = allUseCases.find((u) => u.id === e.target.value) ?? null;
+                  setSelectedForScoring(found);
+                }}
+              >
+                <option value="">Choose a use case...</option>
+                {allUseCases.map((u) => (
+                  <option key={u.id} value={u.id}>{u.name}</option>
+                ))}
+              </Select>
+            </div>
+
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <h3 className="font-semibold text-slate-900">Scoring factors</h3>
@@ -474,7 +477,7 @@ function AIPanel({ open, onClose, selectedUseCase, onScoreSaved }: {
                   Total: {totalWeight}% {totalWeight !== 100 ? '(must equal 100%)' : '✓'}
                 </span>
               </div>
-              <p className="text-sm text-slate-500">These drive the priority score — each maps to a weighted criterion.</p>
+              <p className="text-sm text-slate-500">Adjust weights to reflect your priorities. Must add up to 100%.</p>
             </div>
 
             <div className="grid gap-4 md:grid-cols-2">
@@ -493,16 +496,22 @@ function AIPanel({ open, onClose, selectedUseCase, onScoreSaved }: {
               ))}
             </div>
 
-            {selectedUseCase && (
-              <Button onClick={() => void scoreUseCase()} disabled={scoring || totalWeight !== 100} className="w-full" type="button">
-                {scoring ? 'Scoring...' : `Score "${selectedUseCase.name}"`}
-              </Button>
-            )}
+            <Button
+              onClick={() => void scoreUseCase()}
+              disabled={scoring || totalWeight !== 100 || !selectedForScoring}
+              className="w-full"
+              type="button"
+            >
+              {scoring ? 'Scoring...' : selectedForScoring ? `Score "${selectedForScoring.name}"` : 'Select a use case first'}
+            </Button>
 
-            {scoreResult && (
+            {scoreResult && selectedForScoring && (
               <div className="rounded-3xl border border-slate-200 overflow-hidden">
                 <div className="bg-slate-900 px-6 py-4 flex items-center justify-between">
-                  <span className="text-white font-semibold">Score Result</span>
+                  <div>
+                    <span className="text-white font-semibold">{selectedForScoring.name}</span>
+                    <p className="text-slate-400 text-xs mt-0.5">AI Priority Score</p>
+                  </div>
                   <span className="text-3xl font-bold text-white">{scoreResult.total}<span className="text-sm text-slate-400">/100</span></span>
                 </div>
                 <div className="p-5 space-y-3">
@@ -754,7 +763,6 @@ export default function UseCasePortfolioApp() {
     <div className="min-h-screen bg-slate-100 p-4 md:p-8">
       <div className="mx-auto max-w-7xl space-y-6">
 
-        {/* Header */}
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
           className="overflow-hidden rounded-[28px] bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 p-6 text-white shadow-xl md:p-8">
           <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
@@ -798,7 +806,6 @@ export default function UseCasePortfolioApp() {
           <Card><CardContent className="p-4 text-sm text-slate-500">Showing demo data — live Google Sheets data will appear once the API is connected.</CardContent></Card>
         )}
 
-        {/* Stats */}
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <StatCard title="Total use cases" value={stats.total} subtitle="Across current and future portfolio" icon={Briefcase} />
           <StatCard title="Current quarter" value={stats.current} subtitle="Active focus for review" icon={Target} />
@@ -806,7 +813,6 @@ export default function UseCasePortfolioApp() {
           <StatCard title="Moving forward" value={stats.liveOrProgress} subtitle="Live or currently in progress" icon={CalendarDays} />
         </div>
 
-        {/* Filters */}
         <Card className="rounded-[28px]">
           <CardContent className="p-4 md:p-5">
             <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
@@ -841,7 +847,6 @@ export default function UseCasePortfolioApp() {
           </CardContent>
         </Card>
 
-        {/* Table / Cards */}
         <AnimatePresence mode="wait">
           {view === 'table' ? (
             <motion.div key="table" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }}>
@@ -855,8 +860,8 @@ export default function UseCasePortfolioApp() {
                         <th className="px-6 py-4 font-medium">Stakeholder</th>
                         <th className="px-6 py-4 font-medium">Status</th>
                         <th className="px-6 py-4 font-medium">Priority</th>
-                {isEditor && <th className="px-6 py-4 font-medium">Value</th>}
-{isEditor && <th className="px-6 py-4 font-medium">Score</th>}
+                        {isEditor && <th className="px-6 py-4 font-medium">Value</th>}
+                        {isEditor && <th className="px-6 py-4 font-medium">Score</th>}
                         <th className="px-6 py-4 font-medium">Horizon</th>
                         <th className="px-6 py-4 font-medium">Updated</th>
                         <th className="px-6 py-4 font-medium text-right">Actions</th>
@@ -877,8 +882,8 @@ export default function UseCasePortfolioApp() {
                             <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-700">{item.stakeholder}</td>
                             <td className="px-6 py-4"><Badge className={cn('border', statusStyles[item.status])}>{item.status}</Badge></td>
                             <td className="px-6 py-4"><Badge className={cn('border', priorityStyles[item.priority])}>{item.priority}</Badge></td>
-                           {isEditor && <td className="whitespace-nowrap px-6 py-4 text-sm font-semibold text-emerald-600">{signs}</td>}
-{isEditor && <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-700">{item.score ? `${item.score}/100` : '—'}</td>}
+                            {isEditor && <td className="whitespace-nowrap px-6 py-4 text-sm font-semibold text-emerald-600">{signs}</td>}
+                            {isEditor && <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-700">{item.score ? `${item.score}/100` : '—'}</td>}
                             <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-700">{item.horizon}</td>
                             <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-500">{item.updated}</td>
                             <td className="px-6 py-4 text-right">
@@ -921,8 +926,8 @@ export default function UseCasePortfolioApp() {
                       <div className="flex flex-wrap gap-2">
                         <Badge className={cn('border', statusStyles[item.status])}>{item.status}</Badge>
                         <Badge className={cn('border', priorityStyles[item.priority])}>{item.priority}</Badge>
-                        {signs && <Badge className="border border-emerald-200 bg-emerald-50 text-emerald-700">{signs}</Badge>}
-                        {item.score && <Badge className="border border-slate-200 bg-slate-50 text-slate-700">{item.score}/100</Badge>}
+                        {isEditor && signs && <Badge className="border border-emerald-200 bg-emerald-50 text-emerald-700">{signs}</Badge>}
+                        {isEditor && item.score && <Badge className="border border-slate-200 bg-slate-50 text-slate-700">{item.score}/100</Badge>}
                       </div>
                       <p className="text-sm leading-6 text-slate-600">{item.description}</p>
                       <div className="grid gap-3 text-sm text-slate-600">
@@ -947,16 +952,17 @@ export default function UseCasePortfolioApp() {
           )}
         </AnimatePresence>
 
-        {/* Gantt */}
         <GanttChart items={filtered} />
 
-        {/* Form */}
         <UseCaseForm open={formOpen} onOpenChange={setFormOpen} onSave={(item) => void saveItem(item)} editingItem={editingItem} />
 
-        {/* AI Panel */}
-        <AIPanel open={aiOpen} onClose={() => setAiOpen(false)} selectedUseCase={activeItem} onScoreSaved={(id, score) => void handleScoreSaved(id, score)} />
+        <AIPanel
+          open={aiOpen}
+          onClose={() => setAiOpen(false)}
+          allUseCases={useCases}
+          onScoreSaved={(id, score) => void handleScoreSaved(id, score)}
+        />
 
-        {/* Detail Drawer */}
         <Drawer open={Boolean(activeItem)} onClose={() => setActiveItem(null)}>
           {activeItem && (
             <>
@@ -973,10 +979,10 @@ export default function UseCasePortfolioApp() {
                   <Badge className={cn('border border-white/20', statusStyles[activeItem.status])}>{activeItem.status}</Badge>
                   <Badge className={cn('border border-white/20', priorityStyles[activeItem.priority])}>{activeItem.priority}</Badge>
                   <Badge className="border border-white/20 bg-white/10 text-white">{activeItem.horizon}</Badge>
-                  {getValueSigns(activeItem.value_amount) && (
+                  {isEditor && getValueSigns(activeItem.value_amount) && (
                     <Badge className="border border-emerald-400/30 bg-emerald-400/20 text-emerald-300">{getValueSigns(activeItem.value_amount)}</Badge>
                   )}
-                  {activeItem.score && (
+                  {isEditor && activeItem.score && (
                     <Badge className="border border-white/20 bg-white/10 text-white">Score: {activeItem.score}/100</Badge>
                   )}
                 </div>
@@ -1011,7 +1017,7 @@ export default function UseCasePortfolioApp() {
                       </CardContent>
                     </Card>
                   )}
-                  {activeItem.value_amount && (
+                  {isEditor && activeItem.value_amount && (
                     <Card className="border border-slate-200 shadow-none md:col-span-2">
                       <CardContent className="p-5">
                         <p className="text-sm text-slate-500">Estimated value</p>
