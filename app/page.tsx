@@ -783,9 +783,6 @@ export default function UseCasePortfolioApp() {
                     <Button className="border border-white/30 bg-white/10 text-white hover:bg-white/20" onClick={() => setAiOpen(true)} type="button">
                       <Bot className="h-4 w-4" /> AI Assistant
                     </Button>
-                    <Button className="bg-white text-slate-900 hover:bg-slate-100" onClick={() => { setEditingItem(null); setFormOpen(true); }} type="button">
-                      <Plus className="h-4 w-4" /> Add use case
-                    </Button>
                   </>
                 )}
               </div>
@@ -892,7 +889,6 @@ export default function UseCasePortfolioApp() {
                                 {isEditor && (
                                   <>
                                     <Button variant="ghost" onClick={() => { setEditingItem(item); setFormOpen(true); }} type="button"><Pencil className="h-4 w-4" /></Button>
-                                    <Button variant="ghost" onClick={() => void deleteItem(item.id)} type="button" className="text-rose-600 hover:bg-rose-50"><Trash2 className="h-4 w-4" /></Button>
                                   </>
                                 )}
                               </div>
@@ -940,7 +936,6 @@ export default function UseCasePortfolioApp() {
                         {isEditor && (
                           <>
                             <Button variant="outline" onClick={() => { setEditingItem(item); setFormOpen(true); }} type="button"><Pencil className="h-4 w-4" /></Button>
-                            <Button variant="outline" onClick={() => void deleteItem(item.id)} type="button" className="text-rose-600 border-rose-200 hover:bg-rose-50"><Trash2 className="h-4 w-4" /></Button>
                           </>
                         )}
                       </div>
@@ -1074,10 +1069,6 @@ export default function UseCasePortfolioApp() {
                     </Button>
                     <Button variant="outline" onClick={() => setAiOpen(true)} type="button">
                       <Bot className="h-4 w-4" /> AI Assistant
-                    </Button>
-                    <Button variant="danger" disabled={saving} onClick={() => void deleteItem(activeItem.id)} type="button">
-                      <Trash2 className="h-4 w-4" /> Delete
-                    </Button>
                   </div>
                 )}
               </div>
