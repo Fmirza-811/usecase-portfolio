@@ -333,10 +333,9 @@ function GanttChart({ items }: { items: UseCaseItem[] }) {
 }
 
 // ── AI Panel ──────────────────────────────────────────────────────────────────
-function AIPanel({ open, onClose, allUseCases, onScoreSaved }: {
-  open: boolean;
-  onClose: () => void;
-  allUseCases: UseCaseItem[];
+function AIPanel({ open, onClose, selectedUseCase, onScoreSaved }: {
+  open: boolean; onClose: () => void;
+  selectedUseCase: UseCaseItem | null;
   onScoreSaved: (id: string, score: string) => void;
 }) {
   const [activeTab, setActiveTab] = useState<AITab>('chat');
@@ -344,7 +343,6 @@ function AIPanel({ open, onClose, allUseCases, onScoreSaved }: {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [weights, setWeights] = useState<ScoreWeights>(defaultWeights);
-  const [selectedForScoring, setSelectedForScoring] = useState<UseCaseItem | null>(null);
   const [scoreResult, setScoreResult] = useState<{ total: number; breakdown: Record<string, number>; reasoning: string } | null>(null);
   const [scoring, setScoring] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -353,12 +351,9 @@ function AIPanel({ open, onClose, allUseCases, onScoreSaved }: {
 
   useEffect(() => {
     if (open && messages.length === 0) {
-      setMessages([{ role: 'assistant', content: `Hi! I'm here to help you define, document, and evaluate AI use cases. Tell me about a use case and I'll help you understand it, generate a BRD, or score it.` }]);
+      setMessages([{ role: 'assistant', content: `Hi! I'm here to help you define, document, and evaluate AI use cases. ${selectedUseCase ? `I can see you're looking at **${selectedUseCase.name}**. ` : ''}Tell me about a use case and I'll help you understand it, generate a BRD, or score it.` }]);
     }
   }, [open]);
-
-  // Reset score result when use case changes
-  useEffect(() => { setScoreResult(null); }, [selectedForScoring]);
 
   const totalWeight = Object.values(weights).reduce((a, b) => a + b, 0);
 
@@ -383,17 +378,17 @@ function AIPanel({ open, onClose, allUseCases, onScoreSaved }: {
   };
 
   const scoreUseCase = async () => {
-    if (!selectedForScoring) return;
+    if (!selectedUseCase) return;
     setScoring(true);
     try {
       const res = await fetch('/api/ai', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'score', useCase: selectedForScoring, weights }),
+        body: JSON.stringify({ action: 'score', useCase: selectedUseCase, weights }),
       });
       const data = await res.json();
       setScoreResult(data);
-      onScoreSaved(selectedForScoring.id, String(data.total));
+      onScoreSaved(selectedUseCase.id, String(data.total));
     } catch {
       alert('Scoring failed. Please try again.');
     }
@@ -432,7 +427,7 @@ function AIPanel({ open, onClose, allUseCases, onScoreSaved }: {
             <div className="flex-1 overflow-y-auto p-6 space-y-4">
               {messages.map((m, i) => (
                 <div key={i} className={cn('flex', m.role === 'user' ? 'justify-end' : 'justify-start')}>
-                  <div className={cn('max-w-[80%] rounded-3xl px-4 py-3 text-sm leading-6 whitespace-pre-wrap', m.role === 'user' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-800')}>
+                  <div className={cn('max-w-[80%] rounded-3xl px-4 py-3 text-sm leading-6', m.role === 'user' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-800')}>
                     {m.content}
                   </div>
                 </div>
@@ -458,25 +453,16 @@ function AIPanel({ open, onClose, allUseCases, onScoreSaved }: {
         {/* Score Tab */}
         {activeTab === 'score' && (
           <div className="flex-1 overflow-y-auto p-6 space-y-6">
-
-            {/* Use Case Dropdown */}
-            <div>
-              <label className="mb-2 block text-sm font-medium text-slate-700">Select use case to score</label>
-              <Select
-                value={selectedForScoring?.id ?? ''}
-                onChange={(e) => {
-                  const found = allUseCases.find((u) => u.id === e.target.value) ?? null;
-                  setSelectedForScoring(found);
-                }}
-              >
-                <option value="">Choose a use case...</option>
-                {allUseCases.map((u) => (
-                  <option key={u.id} value={u.id}>{u.name}</option>
-                ))}
-              </Select>
-            </div>
-
-            {/* Weights */}
+<div>
+  <label className="mb-2 block text-sm font-medium text-slate-700">Select Use Case to Score</label>
+  <Select value={selectedForScoring?.id ?? ''} onChange={(e) => {
+    const found = allUseCases.find((u) => u.id === e.target.value) ?? null;
+    setSelectedForScoring(found);
+  }}>
+    <option value="">Choose a use case...</option>
+    {allUseCases.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
+  </Select>
+</div>
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <h3 className="font-semibold text-slate-900">Scoring factors</h3>
@@ -484,7 +470,7 @@ function AIPanel({ open, onClose, allUseCases, onScoreSaved }: {
                   Total: {totalWeight}% {totalWeight !== 100 ? '(must equal 100%)' : '✓'}
                 </span>
               </div>
-              <p className="text-sm text-slate-500">Adjust weights to reflect your priorities. Must add up to 100%.</p>
+              <p className="text-sm text-slate-500">These drive the priority score — each maps to a weighted criterion.</p>
             </div>
 
             <div className="grid gap-4 md:grid-cols-2">
@@ -503,22 +489,16 @@ function AIPanel({ open, onClose, allUseCases, onScoreSaved }: {
               ))}
             </div>
 
-            <Button
-              onClick={() => void scoreUseCase()}
-              disabled={scoring || totalWeight !== 100 || !selectedForScoring}
-              className="w-full"
-              type="button"
-            >
-              {scoring ? 'Scoring...' : selectedForScoring ? `Score "${selectedForScoring.name}"` : 'Select a use case first'}
-            </Button>
+            {selectedUseCase && (
+              <Button onClick={() => void scoreUseCase()} disabled={scoring || totalWeight !== 100} className="w-full" type="button">
+                {scoring ? 'Scoring...' : `Score "${selectedUseCase.name}"`}
+              </Button>
+            )}
 
-            {scoreResult && selectedForScoring && (
+            {scoreResult && (
               <div className="rounded-3xl border border-slate-200 overflow-hidden">
                 <div className="bg-slate-900 px-6 py-4 flex items-center justify-between">
-                  <div>
-                    <span className="text-white font-semibold">{selectedForScoring.name}</span>
-                    <p className="text-slate-400 text-xs mt-0.5">AI Priority Score</p>
-                  </div>
+                  <span className="text-white font-semibold">Score Result</span>
                   <span className="text-3xl font-bold text-white">{scoreResult.total}<span className="text-sm text-slate-400">/100</span></span>
                 </div>
                 <div className="p-5 space-y-3">
@@ -871,8 +851,8 @@ export default function UseCasePortfolioApp() {
                         <th className="px-6 py-4 font-medium">Stakeholder</th>
                         <th className="px-6 py-4 font-medium">Status</th>
                         <th className="px-6 py-4 font-medium">Priority</th>
-                        <th className="px-6 py-4 font-medium">Value</th>
-                        <th className="px-6 py-4 font-medium">Score</th>
+                {isEditor && <th className="px-6 py-4 font-medium">Value</th>}
+{isEditor && <th className="px-6 py-4 font-medium">Score</th>}
                         <th className="px-6 py-4 font-medium">Horizon</th>
                         <th className="px-6 py-4 font-medium">Updated</th>
                         <th className="px-6 py-4 font-medium text-right">Actions</th>
@@ -893,8 +873,8 @@ export default function UseCasePortfolioApp() {
                             <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-700">{item.stakeholder}</td>
                             <td className="px-6 py-4"><Badge className={cn('border', statusStyles[item.status])}>{item.status}</Badge></td>
                             <td className="px-6 py-4"><Badge className={cn('border', priorityStyles[item.priority])}>{item.priority}</Badge></td>
-                            <td className="whitespace-nowrap px-6 py-4 text-sm font-semibold text-emerald-600">{signs}</td>
-                            <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-700">{item.score ? `${item.score}/100` : '—'}</td>
+                           {isEditor && <td className="whitespace-nowrap px-6 py-4 text-sm font-semibold text-emerald-600">{signs}</td>}
+{isEditor && <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-700">{item.score ? `${item.score}/100` : '—'}</td>}
                             <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-700">{item.horizon}</td>
                             <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-500">{item.updated}</td>
                             <td className="px-6 py-4 text-right">
@@ -969,13 +949,8 @@ export default function UseCasePortfolioApp() {
         {/* Form */}
         <UseCaseForm open={formOpen} onOpenChange={setFormOpen} onSave={(item) => void saveItem(item)} editingItem={editingItem} />
 
-        {/* AI Panel — now receives allUseCases */}
-        <AIPanel
-          open={aiOpen}
-          onClose={() => setAiOpen(false)}
-          allUseCases={useCases}
-          onScoreSaved={(id, score) => void handleScoreSaved(id, score)}
-        />
+        {/* AI Panel */}
+        <AIPanel open={aiOpen} onClose={() => setAiOpen(false)} selectedUseCase={activeItem} onScoreSaved={(id, score) => void handleScoreSaved(id, score)} />
 
         {/* Detail Drawer */}
         <Drawer open={Boolean(activeItem)} onClose={() => setActiveItem(null)}>
