@@ -14,7 +14,7 @@ async function callGemini(prompt: string): Promise<string> {
     }),
   });
   const data = await res.json();
-  console.log('Gemini response:', JSON.stringify(data));
+  console.log('Gemini response:', JSON.stringify(data).slice(0, 300));
   return data?.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
 }
 
@@ -28,34 +28,41 @@ export async function POST(req: NextRequest) {
         .map((m) => `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.content}`)
         .join('\n');
 
-      const prompt = `You are an AI strategy assistant helping to define, document, and evaluate AI use cases for a business. When the user describes a use case, ask clarifying questions if needed, help define it clearly, and offer to generate a BRD or score it. Be concise, professional, and actionable.
+      const prompt = `You are an AI strategy assistant helping businesses evaluate AI use cases. Be concise and helpful.
 
-Conversation so far:
+Conversation:
 ${history}
 
 Respond to the last user message.`;
 
       const response = await callGemini(prompt);
-      return NextResponse.json({ content: response });
+      return NextResponse.json({ content: response || 'Sorry, I could not generate a response. Please try again.' });
     }
 
     if (action === 'score') {
-      const prompt = `Score this AI use case based on the following weighted criteria. Return ONLY valid JSON with no markdown, no code blocks, no explanation outside the JSON.
+      const prompt = `Score this AI use case. Return ONLY a JSON object, no other text.
 
-Use case:
-Name: ${useCase.name}
+Use case: ${useCase.name}
 Description: ${useCase.description}
 Impact: ${useCase.impact}
 
-Weights (each criterion scored 1-5, multiplied by weight percentage):
-${JSON.stringify(weights, null, 2)}
-
-Return this exact JSON structure:
-{"total":75,"breakdown":{"roi_potential":4,"complexity":3,"time_to_build":3,"data_availability":4,"differentiation":3,"urgency":3,"strategic_alignment":4},"reasoning":"Brief explanation here"}`;
+Return exactly this JSON:
+{"total":75,"breakdown":{"roi_potential":4,"complexity":3,"time_to_build":3,"data_availability":4,"differentiation":3,"urgency":3,"strategic_alignment":4},"reasoning":"Brief explanation"}`;
 
       const text = await callGemini(prompt);
+      console.log('Score text:', text?.slice(0, 200));
+      
+      if (!text) {
+        return NextResponse.json({ error: 'Empty response from AI' }, { status: 500 });
+      }
+      
       const clean = text.replace(/```json|```/g, '').trim();
-      return NextResponse.json(JSON.parse(clean));
+      
+      try {
+        return NextResponse.json(JSON.parse(clean));
+      } catch {
+        return NextResponse.json({ error: 'Could not parse AI response', raw: clean }, { status: 500 });
+      }
     }
 
     return NextResponse.json({ error: 'Unknown action' }, { status: 400 });
