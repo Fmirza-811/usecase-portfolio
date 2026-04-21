@@ -1,9 +1,20 @@
 export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
-import Anthropic from '@anthropic-ai/sdk';
 
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
+
+async function callGemini(prompt: string): Promise<string> {
+  const res = await fetch(`${GEMINI_API_URL}?key=${process.env.GEMINI_API_KEY}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      contents: [{ parts: [{ text: prompt }] }],
+    }),
+  });
+  const data = await res.json();
+  return data.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -11,76 +22,23 @@ export async function POST(req: NextRequest) {
     const { action, useCase, weights, messages } = body;
 
     if (action === 'chat') {
-      const systemPrompt = `You are an AI strategy assistant helping to define, document, and evaluate AI use cases for a business.
+      const history = messages.map((m: { role: string; content: string }) =>
+        `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.content}`
+      ).join('\n');
 
-When the user describes a use case:
-1. Ask clarifying questions if needed
-2. Help define it clearly
-3. When you have enough info, offer to generate a BRD or score it
+      const prompt = `You are an AI strategy assistant helping to define, document, and evaluate AI use cases for a business. When the user describes a use case, ask clarifying questions if needed, help define it clearly, and offer to generate a BRD or score it. Be concise, professional, and actionable.
 
-When asked to generate a BRD, produce a structured document with:
-- Executive Summary
-- Problem Statement  
-- Proposed Solution
-- Key Stakeholders
-- Expected Benefits & ROI
-- Technical Requirements
-- Data Requirements
-- Risks & Mitigations
-- Success Metrics
-- Timeline
+Conversation so far:
+${history}
 
-When asked to score/rank a use case, use these weighted criteria:
-${JSON.stringify(weights, null, 2)}
+Respond to the last user message.`;
 
-Score each criterion 1-5, multiply by weight, sum for total score out of 100.
-Present scores clearly with reasoning.
-
-Be concise, professional, and actionable.`;
-
-      const response = await client.messages.create({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 2000,
-        system: systemPrompt,
-        messages: messages,
-      });
-
-      return NextResponse.json({ 
-        content: response.content[0].type === 'text' ? response.content[0].text : '' 
-      });
-    }
-
-    if (action === 'generate_brd') {
-      const response = await client.messages.create({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 3000,
-        messages: [{
-          role: 'user',
-          content: `Generate a comprehensive Business Requirements Document (BRD) for this AI use case:
-
-Name: ${useCase.name}
-Department: ${useCase.department}
-Description: ${useCase.description}
-Expected Impact: ${useCase.impact}
-Stakeholder: ${useCase.stakeholder}
-Notes: ${useCase.notes}
-
-Format it as a proper BRD document with clear sections.`
-        }]
-      });
-
-      return NextResponse.json({ 
-        brd: response.content[0].type === 'text' ? response.content[0].text : '' 
-      });
+      const response = await callGemini(prompt);
+      return NextResponse.json({ content: response });
     }
 
     if (action === 'score') {
-      const response = await client.messages.create({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 1000,
-        messages: [{
-          role: 'user',
-          content: `Score this AI use case based on the following weighted criteria. Return ONLY a JSON object.
+      const prompt = `Score this AI use case based on the following weighted criteria. Return ONLY a JSON object with no markdown or explanation outside the JSON.
 
 Use case:
 Name: ${useCase.name}
@@ -103,11 +61,9 @@ Return JSON in this exact format:
     "strategic_alignment": <1-5>
   },
   "reasoning": "<brief explanation>"
-}`
-        }]
-      });
+}`;
 
-      const text = response.content[0].type === 'text' ? response.content[0].text : '{}';
+      const text = await callGemini(prompt);
       const clean = text.replace(/```json|```/g, '').trim();
       return NextResponse.json(JSON.parse(clean));
     }
