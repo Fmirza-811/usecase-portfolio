@@ -246,7 +246,12 @@ function Drawer({ open, onClose, children }: { open: boolean; onClose: () => voi
 // ── Gantt Chart ───────────────────────────────────────────────────────────────
 function GanttChart({ items }: { items: UseCaseItem[] }) {
   const [tooltip, setTooltip] = useState<{ x: number; y: number; item: UseCaseItem } | null>(null);
-  const validItems = items.filter((i) => i.start_date && i.end_date);
+  const validItems = items.filter((i) => {
+  if (!i.start_date || !i.end_date) return false;
+  const s = new Date(i.start_date.trim());
+  const e = new Date(i.end_date.trim());
+  return !isNaN(s.getTime()) && !isNaN(e.getTime());
+});
   if (validItems.length === 0) return (
     <Card className="rounded-[28px]"><CardContent className="p-8 text-center text-slate-500">No timeline data available.</CardContent></Card>
   );
@@ -296,8 +301,8 @@ function GanttChart({ items }: { items: UseCaseItem[] }) {
                   </div>
                 )}
                 {validItems.map((item) => {
-                  const start = new Date(item.start_date);
-                  const end = new Date(item.end_date);
+                  const start = new Date(item.start_date.trim());
+const end = new Date(item.end_date.trim());
                   const leftPct = (start.getTime() - minDate.getTime()) / (1000 * 60 * 60 * 24) / totalDays * 100;
                   const widthPct = (end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24) / totalDays * 100;
                   const barColor = statusBarColors[item.status] ?? 'bg-slate-400';
@@ -1067,9 +1072,10 @@ export default function UseCasePortfolioApp() {
                     <Button disabled={saving} onClick={() => { setEditingItem(activeItem); setFormOpen(true); }} type="button">
                       <Pencil className="h-4 w-4" /> Edit use case
                     </Button>
-                    <Button variant="outline" onClick={() => setAiOpen(true)} type="button">
-                      <Bot className="h-4 w-4" /> AI Assistant
-                  </div>
+                  <Button variant="outline" onClick={() => setAiOpen(true)} type="button">
+  <Bot className="h-4 w-4" /> AI Assistant
+</Button>
+</div>
                 )}
               </div>
             </>
