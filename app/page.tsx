@@ -1,12 +1,14 @@
 "use client";
 
-import React, { useEffect, useMemo, useState, useCallback, useRef } from 'react';
+import React, { useEffect, useLayoutEffect, useMemo, useState, useCallback, useRef, useContext } from 'react';
 import type { ReactNode, ButtonHTMLAttributes, InputHTMLAttributes, TextareaHTMLAttributes, SelectHTMLAttributes } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Plus, Search, Filter, LayoutGrid, Table2, CalendarDays, Building2, User2,
-  Sparkles, Target, ChevronRight, X, Pencil, Briefcase, Clock3, Shield, Eye,
-  RefreshCw, Trash2, BarChart2, Upload, FileText, Send, Bot, Sliders, type LucideIcon,
+  Sparkles, Target, ChevronRight, ChevronDown, X, Pencil, Briefcase, Clock3, Shield, Eye,
+  RefreshCw, Trash2, BarChart2, Upload, FileText, Send, Bot, Sliders,
+  ArrowUp, ArrowDown, ArrowUpDown, Command, Loader2, CheckCircle2, AlertTriangle, Info,
+  Square, CheckSquare, type LucideIcon,
 } from 'lucide-react';
 
 const EDITOR_SECRET = 'AIlabs2026';
@@ -33,6 +35,8 @@ type UseCaseItem = {
   brd_url: string;
   score: string;
 };
+
+type SortableKey = 'name' | 'department' | 'stakeholder' | 'status' | 'priority' | 'value_amount' | 'score' | 'horizon' | 'end_date' | 'updated';
 
 type Message = { role: 'user' | 'assistant'; content: string };
 
@@ -105,7 +109,7 @@ const demoUseCases: UseCaseItem[] = [
   },
 ];
 
-const statusOptions = ['Idea', 'In Discovery', 'Planned', 'In Progress', 'Blocked', 'Live', 'On Hold'] as const;
+const statusOptions = ['Idea', 'In Discovery', 'Planned', 'In Progress', 'Blocked', 'Live', 'On Hold', 'Removed'] as const;
 const priorityOptions = ['Low', 'Medium', 'High', 'Critical'] as const;
 const horizonOptions = ['Current Quarter', 'Next Quarter', 'Future Pipeline'] as const;
 
@@ -117,11 +121,13 @@ const statusStyles: Record<string, string> = {
   Blocked: 'bg-rose-100 text-rose-700 border-rose-200',
   Live: 'bg-emerald-100 text-emerald-700 border-emerald-200',
   'On Hold': 'bg-zinc-100 text-zinc-700 border-zinc-200',
+  Removed: 'bg-neutral-200 text-neutral-500 border-neutral-300 line-through',
 };
 
 const statusBarColors: Record<string, string> = {
   Idea: 'bg-slate-400', 'In Discovery': 'bg-blue-400', Planned: 'bg-violet-400',
   'In Progress': 'bg-amber-400', Blocked: 'bg-rose-400', Live: 'bg-emerald-400', 'On Hold': 'bg-zinc-400',
+  Removed: 'bg-neutral-400',
 };
 
 const priorityStyles: Record<string, string> = {
@@ -141,6 +147,160 @@ function getValueSigns(amount: string): string {
 
 function cn(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(' ');
+}
+
+function formatUpdated(value: string): string {
+  if (!value) return '—';
+  const d = new Date(value);
+  if (isNaN(d.getTime())) return value;
+  return d.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+}
+
+// Avoids the "useLayoutEffect does nothing on the server" warning during Next.js SSR.
+const useIsomorphicLayoutEffect = typeof window !== 'undefined' ? useLayoutEffect : useEffect;
+
+// ── Clamped description (3 lines, with "See more" when it actually overflows) ──
+function ClampedText({ text }: { text: string }) {
+  const [expanded, setExpanded] = useState(false);
+  const [overflowing, setOverflowing] = useState(false);
+  const ref = useRef<HTMLParagraphElement>(null);
+
+  useIsomorphicLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    setOverflowing(el.scrollHeight > el.clientHeight + 1);
+  }, [text]);
+
+  return (
+    <div>
+      <p ref={ref} className={cn('text-sm leading-6 text-slate-600', !expanded && 'line-clamp-3')}>
+        {text}
+      </p>
+      {(overflowing || expanded) && (
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); setExpanded((v) => !v); }}
+          className="mt-1 text-xs font-semibold text-slate-500 transition hover:text-slate-900"
+        >
+          {expanded ? 'Show less' : 'See more'}
+        </button>
+      )}
+    </div>
+  );
+}
+
+// ── Toasts (autosave feedback, undo, error/retry) ──────────────────────────────
+type ToastKind = 'pending' | 'success' | 'error' | 'info';
+type ToastItem = { id: string; kind: ToastKind; message: string; actionLabel?: string; onAction?: () => void };
+type ToastAPI = {
+  push: (t: Omit<ToastItem, 'id'>, durationMs?: number) => string;
+  update: (id: string, patch: Partial<Omit<ToastItem, 'id'>>, durationMs?: number) => void;
+  dismiss: (id: string) => void;
+};
+
+const ToastContext = React.createContext<ToastAPI | null>(null);
+
+function useToast(): ToastAPI {
+  const ctx = useContext(ToastContext);
+  if (!ctx) throw new Error('useToast must be used within a ToastProvider');
+  return ctx;
+}
+
+function useToastState() {
+  const [toasts, setToasts] = useState<ToastItem[]>([]);
+  const counter = useRef(0);
+  const timers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+
+  const clearTimer = (id: string) => {
+    if (timers.current[id]) { clearTimeout(timers.current[id]); delete timers.current[id]; }
+  };
+
+  const scheduleClear = useCallback((id: string, durationMs: number) => {
+    clearTimer(id);
+    if (durationMs <= 0) return;
+    timers.current[id] = setTimeout(() => {
+      setToasts((prev) => prev.filter((t) => t.id !== id));
+      delete timers.current[id];
+    }, durationMs);
+  }, []);
+
+  const defaultDuration = (kind: ToastKind) => (kind === 'pending' ? 0 : kind === 'error' ? 7000 : 4000);
+
+  const push = useCallback<ToastAPI['push']>((t, durationMs) => {
+    const id = `toast-${++counter.current}`;
+    setToasts((prev) => [...prev, { ...t, id }]);
+    scheduleClear(id, durationMs ?? defaultDuration(t.kind));
+    return id;
+  }, [scheduleClear]);
+
+  const update = useCallback<ToastAPI['update']>((id, patch, durationMs) => {
+    setToasts((prev) => prev.map((t) => (t.id === id ? { ...t, ...patch } : t)));
+    scheduleClear(id, durationMs ?? defaultDuration(patch.kind ?? 'info'));
+  }, [scheduleClear]);
+
+  const dismiss = useCallback((id: string) => {
+    clearTimer(id);
+    setToasts((prev) => prev.filter((t) => t.id !== id));
+  }, []);
+
+  useEffect(() => () => { Object.values(timers.current).forEach(clearTimeout); }, []);
+
+  return { toasts, api: { push, update, dismiss } };
+}
+
+const toastVisuals: Record<ToastKind, { icon: LucideIcon; className: string }> = {
+  pending: { icon: Loader2, className: 'bg-slate-900 text-white' },
+  success: { icon: CheckCircle2, className: 'bg-slate-900 text-white' },
+  error: { icon: AlertTriangle, className: 'bg-rose-600 text-white' },
+  info: { icon: Info, className: 'bg-slate-900 text-white' },
+};
+
+function ToastStack({ toasts, onDismiss }: { toasts: ToastItem[]; onDismiss: (id: string) => void }) {
+  return (
+    <div className="pointer-events-none fixed bottom-4 right-4 z-[80] flex w-full max-w-sm flex-col gap-2">
+      <AnimatePresence>
+        {toasts.map((t) => {
+          const visual = toastVisuals[t.kind];
+          const Icon = visual.icon;
+          return (
+            <motion.div
+              key={t.id}
+              layout
+              initial={{ opacity: 0, y: 12, scale: 0.96 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 8, scale: 0.96 }}
+              className={cn('pointer-events-auto flex items-center gap-3 rounded-2xl px-4 py-3 shadow-2xl', visual.className)}
+            >
+              <Icon className={cn('h-4 w-4 shrink-0', t.kind === 'pending' && 'animate-spin')} />
+              <span className="flex-1 text-sm leading-5">{t.message}</span>
+              {t.actionLabel && t.onAction && (
+                <button
+                  type="button"
+                  onClick={() => { t.onAction?.(); onDismiss(t.id); }}
+                  className="shrink-0 rounded-full bg-white/15 px-2.5 py-1 text-xs font-semibold transition hover:bg-white/25"
+                >
+                  {t.actionLabel}
+                </button>
+              )}
+              <button type="button" onClick={() => onDismiss(t.id)} className="shrink-0 text-white/50 transition hover:text-white" aria-label="Dismiss">
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </motion.div>
+          );
+        })}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+function ToastProvider({ children }: { children: ReactNode }) {
+  const { toasts, api } = useToastState();
+  return (
+    <ToastContext.Provider value={api}>
+      {children}
+      <ToastStack toasts={toasts} onDismiss={api.dismiss} />
+    </ToastContext.Provider>
+  );
 }
 
 type SurfaceProps = { className?: string; children: ReactNode };
@@ -177,10 +337,90 @@ function Textarea({ className, ...props }: { className?: string } & TextareaHTML
   return <textarea className={cn('w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-slate-300', className)} {...props} />;
 }
 function Select({ className, children, ...props }: { className?: string; children: ReactNode } & SelectHTMLAttributes<HTMLSelectElement>) {
-  return <select className={cn('w-full rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 outline-none focus:border-slate-300', className)} {...props}>{children}</select>;
+  return (
+    <div className="relative">
+      <select
+        className={cn(
+          'w-full appearance-none rounded-2xl border border-slate-200 bg-white px-4 py-2.5 pr-8 text-sm text-slate-900 outline-none focus:border-slate-300',
+          className
+        )}
+        {...props}
+      >
+        {children}
+      </select>
+      <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+    </div>
+  );
 }
 function Badge({ className, children }: SurfaceProps) {
   return <span className={cn('inline-flex items-center whitespace-nowrap rounded-full border px-3 py-1 text-xs font-medium', className)}>{children}</span>;
+}
+
+// ── Inline quick-edit badge (status / priority) ─────────────────────────────────
+function InlineSelectBadge({ value, options, styles, isEditor, onChange, ariaLabel }: {
+  value: string;
+  options: readonly string[];
+  styles: Record<string, string>;
+  isEditor: boolean;
+  onChange: (next: string) => void;
+  ariaLabel: string;
+}) {
+  const [editing, setEditing] = useState(false);
+
+  if (!isEditor) {
+    return <Badge className={cn('border', styles[value])}>{value}</Badge>;
+  }
+
+  if (editing) {
+    return (
+      <select
+        autoFocus
+        value={value}
+        aria-label={`Change ${ariaLabel}`}
+        onClick={(e) => e.stopPropagation()}
+        onChange={(e) => { onChange(e.target.value); setEditing(false); }}
+        onBlur={() => setEditing(false)}
+        onKeyDown={(e) => { if (e.key === 'Escape') { e.stopPropagation(); setEditing(false); } }}
+        className="rounded-full border border-slate-300 bg-white px-2.5 py-1 text-xs font-medium text-slate-900 outline-none"
+      >
+        {options.map((o) => <option key={o} value={o}>{o}</option>)}
+      </select>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={(e) => { e.stopPropagation(); setEditing(true); }}
+      aria-label={`Change ${ariaLabel} (currently ${value})`}
+      title={`Click to change ${ariaLabel}`}
+      className="rounded-full transition hover:ring-2 hover:ring-slate-300 hover:ring-offset-1"
+    >
+      <Badge className={cn('border', styles[value])}>{value}</Badge>
+    </button>
+  );
+}
+
+function SortHeader({ label, sortKey, activeKey, dir, onSort, align }: {
+  label: string; sortKey: SortableKey; activeKey: SortableKey | null; dir: 'asc' | 'desc'; onSort: (key: SortableKey) => void; align?: 'right';
+}) {
+  const active = activeKey === sortKey;
+  return (
+    <th className={cn('whitespace-nowrap px-6 py-4 font-medium', align === 'right' && 'text-right')}>
+      <button
+        type="button"
+        onClick={() => onSort(sortKey)}
+        className={cn('inline-flex items-center gap-1.5 transition-colors hover:text-slate-700', active && 'text-slate-900')}
+      >
+        {label}
+        {active ? (
+          dir === 'asc' ? <ArrowUp className="h-3.5 w-3.5" /> : <ArrowDown className="h-3.5 w-3.5" />
+        ) : (
+          <ArrowUpDown className="h-3.5 w-3.5 text-slate-300" />
+        )}
+      </button>
+    </th>
+  );
 }
 
 function StatCard({ title, value, icon: Icon, subtitle }: { title: string; value: number; icon: LucideIcon; subtitle: string }) {
@@ -214,7 +454,7 @@ type ModalProps = { open: boolean; onClose: () => void; title: string; descripti
 function Modal({ open, onClose, title, description, children, footer }: ModalProps) {
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/50 p-4">
       <div className="max-h-[90vh] w-full max-w-3xl overflow-auto rounded-3xl bg-white shadow-2xl">
         <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 px-6 py-5 text-white">
           <div className="flex items-start justify-between gap-4">
@@ -240,6 +480,140 @@ function Drawer({ open, onClose, children }: { open: boolean; onClose: () => voi
         {children}
       </div>
     </div>
+  );
+}
+
+// ── Command palette (Ctrl/Cmd+K to jump to any use case) ────────────────────────
+type PaletteEntry = { id: string; title: string; subtitle: string; onSelect: () => void };
+
+function CommandPalette({ open, onClose, useCases, onOpenItem, onAddNew, isEditor, modLabel }: {
+  open: boolean;
+  onClose: () => void;
+  useCases: UseCaseItem[];
+  onOpenItem: (item: UseCaseItem) => void;
+  onAddNew: () => void;
+  isEditor: boolean;
+  modLabel: string;
+}) {
+  const [query, setQuery] = useState('');
+  const [highlight, setHighlight] = useState(0);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (open) {
+      setQuery('');
+      setHighlight(0);
+      const t = setTimeout(() => inputRef.current?.focus(), 10);
+      return () => clearTimeout(t);
+    }
+  }, [open]);
+
+  const entries = useMemo<PaletteEntry[]>(() => {
+    const q = query.trim().toLowerCase();
+    const matches = !q ? useCases : useCases.filter((u) =>
+      `${u.id} ${u.name} ${u.department} ${u.stakeholder} ${u.status}`.toLowerCase().includes(q)
+    );
+    const items: PaletteEntry[] = matches.slice(0, 8).map((u) => ({
+      id: u.id,
+      title: u.name || u.id,
+      subtitle: `${u.id} · ${u.department || 'No department'} · ${u.status || 'No status'}`,
+      onSelect: () => onOpenItem(u),
+    }));
+    if (isEditor && (!q || 'add new use case'.includes(q))) {
+      items.push({ id: '__add__', title: 'Add new use case', subtitle: 'Create a fresh entry', onSelect: onAddNew });
+    }
+    return items;
+  }, [query, useCases, isEditor, onOpenItem, onAddNew]);
+
+  useEffect(() => { setHighlight(0); }, [entries.length]);
+
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-[70] flex items-start justify-center bg-slate-900/50 p-4 pt-[12vh]" onClick={onClose}>
+      <div className="w-full max-w-xl overflow-hidden rounded-3xl bg-white shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center gap-3 border-b border-slate-100 px-5 py-4">
+          <Search className="h-4 w-4 shrink-0 text-slate-400" />
+          <input
+            ref={inputRef}
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Jump to a use case, or add a new one..."
+            className="w-full text-sm text-slate-900 outline-none placeholder:text-slate-400"
+            onKeyDown={(e) => {
+              if (e.key === 'ArrowDown') { e.preventDefault(); setHighlight((h) => Math.min(h + 1, entries.length - 1)); }
+              else if (e.key === 'ArrowUp') { e.preventDefault(); setHighlight((h) => Math.max(h - 1, 0)); }
+              else if (e.key === 'Enter') { e.preventDefault(); entries[highlight]?.onSelect(); }
+            }}
+          />
+          <kbd className="shrink-0 rounded-md border border-slate-200 px-1.5 py-0.5 text-[10px] text-slate-400">Esc</kbd>
+        </div>
+        <div className="max-h-80 overflow-y-auto py-2">
+          {entries.length === 0 && <div className="px-5 py-6 text-sm text-slate-400">No matches.</div>}
+          {entries.map((entry, i) => (
+            <button
+              key={entry.id}
+              type="button"
+              onClick={entry.onSelect}
+              onMouseEnter={() => setHighlight(i)}
+              className={cn('flex w-full flex-col items-start gap-0.5 px-5 py-2.5 text-left transition-colors', i === highlight ? 'bg-slate-100' : 'hover:bg-slate-50')}
+            >
+              <span className="text-sm font-medium text-slate-900">{entry.title}</span>
+              <span className="text-xs text-slate-500">{entry.subtitle}</span>
+            </button>
+          ))}
+        </div>
+        <div className="border-t border-slate-100 px-5 py-2.5 text-[11px] text-slate-400">
+          <kbd className="rounded border border-slate-200 px-1 py-0.5">↑↓</kbd> navigate · <kbd className="rounded border border-slate-200 px-1 py-0.5">Enter</kbd> select · <kbd className="rounded border border-slate-200 px-1 py-0.5">{modLabel}K</kbd> toggle
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Bulk action bar (multi-select rows/cards) ───────────────────────────────────
+function BulkActionBar({ count, onSetStatus, onSetPriority, onDelete, onClear, busy }: {
+  count: number;
+  onSetStatus: (status: string) => void;
+  onSetPriority: (priority: string) => void;
+  onDelete: () => void;
+  onClear: () => void;
+  busy: boolean;
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 24 }}
+      className="fixed inset-x-0 bottom-6 z-[65] flex justify-center px-4"
+    >
+      <div className="flex flex-wrap items-center gap-3 rounded-2xl bg-slate-900 px-5 py-3 text-white shadow-2xl">
+        <span className="text-sm font-medium">{count} selected</span>
+        <div className="h-5 w-px bg-white/20" />
+        <select
+          defaultValue=""
+          disabled={busy}
+          onChange={(e) => { if (e.target.value) onSetStatus(e.target.value); e.target.value = ''; }}
+          className="h-9 rounded-xl border border-white/20 bg-white/10 px-3 text-xs text-white outline-none disabled:opacity-50 [&>option]:text-slate-900"
+        >
+          <option value="" disabled>Set status…</option>
+          {statusOptions.map((o) => <option key={o} value={o}>{o}</option>)}
+        </select>
+        <select
+          defaultValue=""
+          disabled={busy}
+          onChange={(e) => { if (e.target.value) onSetPriority(e.target.value); e.target.value = ''; }}
+          className="h-9 rounded-xl border border-white/20 bg-white/10 px-3 text-xs text-white outline-none disabled:opacity-50 [&>option]:text-slate-900"
+        >
+          <option value="" disabled>Set priority…</option>
+          {priorityOptions.map((o) => <option key={o} value={o}>{o}</option>)}
+        </select>
+        <Button variant="danger" onClick={onDelete} disabled={busy} type="button" className="h-9">
+          <Trash2 className="h-4 w-4" /> Delete
+        </Button>
+        <button type="button" onClick={onClear} className="ml-1 shrink-0 text-white/60 transition hover:text-white" aria-label="Clear selection">
+          <X className="h-4 w-4" />
+        </button>
+      </div>
+    </motion.div>
   );
 }
 
@@ -344,6 +718,7 @@ function AIPanel({ open, onClose, allUseCases, onScoreSaved }: {
   allUseCases: UseCaseItem[];
   onScoreSaved: (id: string, score: string) => void;
 }) {
+  const toast = useToast();
   const [activeTab, setActiveTab] = useState<AITab>('chat');
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
@@ -396,10 +771,11 @@ function AIPanel({ open, onClose, allUseCases, onScoreSaved }: {
         body: JSON.stringify({ action: 'score', useCase: selectedForScoring, weights }),
       });
       const data = await res.json();
+      if (!res.ok || data?.error) throw new Error(data?.error ?? 'Scoring failed');
       setScoreResult(data);
       onScoreSaved(selectedForScoring.id, String(data.total));
     } catch {
-      alert('Scoring failed. Please try again.');
+      toast.push({ kind: 'error', message: 'Scoring failed. Please try again.', actionLabel: 'Retry', onAction: () => void scoreUseCase() });
     }
     setScoring(false);
   };
@@ -549,15 +925,40 @@ const emptyForm: UseCaseItem = {
   start_date: '', end_date: '', value_amount: '', brd_url: '', score: '',
 };
 
-function UseCaseForm({ open, onOpenChange, onSave, editingItem }: {
-  open: boolean; onOpenChange: (v: boolean) => void; onSave: (item: UseCaseItem) => void; editingItem: UseCaseItem | null;
+function UseCaseForm({ open, onOpenChange, onSave, editingItem, modLabel }: {
+  open: boolean; onOpenChange: (v: boolean) => void; onSave: (item: UseCaseItem) => Promise<boolean>; editingItem: UseCaseItem | null; modLabel: string;
 }) {
+  const toast = useToast();
   const [form, setForm] = useState<UseCaseItem>(emptyForm);
   const [uploading, setUploading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => { setForm(editingItem ?? emptyForm); }, [editingItem, open]);
+  useEffect(() => { setForm(editingItem ?? emptyForm); setSubmitError(null); }, [editingItem, open]);
   const update = (key: keyof UseCaseItem, value: string) => setForm((p) => ({ ...p, [key]: value }));
+
+  const handleSubmit = useCallback(async () => {
+    if (!form.id || !form.name) {
+      setSubmitError('Use Case ID and Name are required.');
+      return;
+    }
+    setSubmitting(true);
+    setSubmitError(null);
+    const ok = await onSave({ ...form });
+    setSubmitting(false);
+    if (ok) onOpenChange(false);
+    else setSubmitError("Couldn't save — check your connection and try again.");
+  }, [form, onSave, onOpenChange]);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') { e.preventDefault(); void handleSubmit(); }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [open, handleSubmit]);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -569,8 +970,11 @@ function UseCaseForm({ open, onOpenChange, onSave, editingItem }: {
     try {
       const res = await fetch('/api/usecases', { method: 'PUT', body: fd });
       const data = await res.json();
-      if (data.url) update('brd_url', data.url);
-    } catch { alert('Upload failed'); }
+      if (!res.ok || data?.error) throw new Error(data?.error ?? 'Upload failed');
+      if (data.url) { update('brd_url', data.url); toast.push({ kind: 'success', message: 'BRD uploaded' }); }
+    } catch {
+      toast.push({ kind: 'error', message: 'BRD upload failed. Please try again.' });
+    }
     setUploading(false);
   };
 
@@ -582,11 +986,20 @@ function UseCaseForm({ open, onOpenChange, onSave, editingItem }: {
       title={editingItem ? 'Edit use case' : 'Add new use case'}
       description="Keep updates lightweight while capturing enough detail for reviews, planning, and execution."
       footer={
-        <div className="flex justify-end gap-3">
-          <Button variant="outline" onClick={() => onOpenChange(false)} type="button">Cancel</Button>
-          <Button onClick={() => { if (!form.id || !form.name) return; onSave({ ...form }); onOpenChange(false); }} type="button">
-            {editingItem ? 'Save changes' : 'Create use case'}
-          </Button>
+        <div className="flex items-center justify-between gap-4">
+          <p className="text-xs">
+            {submitError ? (
+              <span className="font-medium text-rose-600">{submitError}</span>
+            ) : (
+              <span className="text-slate-400">Press <kbd className="rounded border border-slate-200 px-1 py-0.5">{modLabel}</kbd>+<kbd className="rounded border border-slate-200 px-1 py-0.5">Enter</kbd> to save</span>
+            )}
+          </p>
+          <div className="flex shrink-0 justify-end gap-3">
+            <Button variant="outline" onClick={() => onOpenChange(false)} type="button" disabled={submitting}>Cancel</Button>
+            <Button onClick={() => void handleSubmit()} type="button" disabled={submitting}>
+              {submitting ? 'Saving...' : editingItem ? 'Save changes' : 'Create use case'}
+            </Button>
+          </div>
         </div>
       }
     >
@@ -608,6 +1021,10 @@ function UseCaseForm({ open, onOpenChange, onSave, editingItem }: {
             <option value="BD">BD</option>
             <option value="Marketing">Marketing</option>
             <option value="Client Services">Client Services</option>
+            <option value="Procurement">Procurement</option>
+            <option value="Admin">Admin</option>
+            <option value="NOS">NOS</option>
+            <option value="Executive">Executive</option>
           </Select>
         </div>
         <div className="md:col-span-2">
@@ -620,7 +1037,9 @@ function UseCaseForm({ open, onOpenChange, onSave, editingItem }: {
         </div>
         <div>
           <label className="mb-2 block text-sm font-medium text-slate-700">Last Updated</label>
-          <Input type="date" value={form.updated} onChange={(e) => update('updated', e.target.value)} />
+          <div className="flex h-[42px] items-center rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-500">
+            {editingItem ? formatUpdated(form.updated) : 'Set automatically when saved'}
+          </div>
         </div>
         <div>
           <label className="mb-2 block text-sm font-medium text-slate-700">Status</label>
@@ -685,7 +1104,8 @@ function UseCaseForm({ open, onOpenChange, onSave, editingItem }: {
 }
 
 // ── Main App ──────────────────────────────────────────────────────────────────
-export default function UseCasePortfolioApp() {
+function UseCasePortfolioAppInner() {
+  const toast = useToast();
   const [useCases, setUseCases] = useState<UseCaseItem[]>(demoUseCases);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
@@ -697,56 +1117,181 @@ export default function UseCasePortfolioApp() {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [userRole, setUserRole] = useState<UserRole>('viewer');
-  const [notice, setNotice] = useState('');
-  const [usingDemo, setUsingDemo] = useState(true);
   const [aiOpen, setAiOpen] = useState(false);
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const [modLabel, setModLabel] = useState('Ctrl');
 
   const isEditor = userRole === 'editor';
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get('editor') === EDITOR_SECRET) setUserRole('editor');
-    void loadData();
+    if (/Mac|iPhone|iPad|iPod/.test(navigator.platform || navigator.userAgent)) setModLabel('⌘');
+    void loadData({ silent: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const loadData = useCallback(async () => {
-    setLoading(true); setNotice('');
+  const loadData = useCallback(async (opts?: { silent?: boolean }) => {
+    setLoading(true);
     try {
       const res = await fetch('/api/usecases');
       if (!res.ok) throw new Error('Failed');
       const data: UseCaseItem[] = await res.json();
-      if (data.length > 0) { setUseCases(data); setUsingDemo(false); }
-      else { setUseCases(demoUseCases); setUsingDemo(true); }
-    } catch { setUseCases(demoUseCases); setUsingDemo(true); setNotice('Could not connect to database. Showing demo data.'); }
+      const next = data.length > 0 ? data : demoUseCases;
+      setUseCases(next);
+      setSelectedIds((prev) => new Set(Array.from(prev).filter((id) => next.some((u) => u.id === id))));
+    } catch {
+      setUseCases((prev) => (prev.length ? prev : demoUseCases));
+      if (!opts?.silent) {
+        toast.push({ kind: 'error', message: "Couldn't reach the data source — showing existing data.", actionLabel: 'Retry', onAction: () => void loadData() });
+      }
+    }
     setLoading(false);
-  }, []);
+  }, [toast]);
 
-  const saveItem = async (item: UseCaseItem) => {
-    setSaving(true); setNotice('');
+  const saveItem = useCallback(async (item: UseCaseItem): Promise<boolean> => {
+    setSaving(true);
+    const stamped: UseCaseItem = { ...item, updated: new Date().toISOString() };
     try {
-      const res = await fetch('/api/usecases', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(item) });
+      const res = await fetch('/api/usecases', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(stamped) });
       if (!res.ok) throw new Error('Failed');
-      await loadData(); setNotice('Saved successfully.');
-    } catch { setNotice('Could not save. Please try again.'); }
-    setSaving(false); setEditingItem(null);
-  };
+      await loadData({ silent: true });
+      setEditingItem(null);
+      setSaving(false);
+      return true;
+    } catch {
+      setSaving(false);
+      return false;
+    }
+  }, [loadData]);
 
-  const deleteItem = async (id: string) => {
+  const deleteItem = useCallback(async (id: string) => {
     if (!confirm('Are you sure you want to delete this use case?')) return;
-    setSaving(true); setNotice('');
+    setSaving(true);
+    const toastId = toast.push({ kind: 'pending', message: 'Deleting use case…' });
     try {
       const res = await fetch('/api/usecases', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) });
       if (!res.ok) throw new Error('Failed');
-      setActiveItem(null); await loadData(); setNotice('Deleted successfully.');
-    } catch { setNotice('Could not delete. Please try again.'); }
+      setActiveItem(null);
+      await loadData({ silent: true });
+      toast.update(toastId, { kind: 'success', message: 'Use case deleted', actionLabel: undefined, onAction: undefined });
+    } catch {
+      toast.update(toastId, { kind: 'error', message: "Couldn't delete — try again", actionLabel: 'Retry', onAction: () => void deleteItem(id) });
+    }
     setSaving(false);
-  };
+  }, [toast, loadData]);
 
-  const handleScoreSaved = async (id: string, score: string) => {
+  const handleScoreSaved = useCallback(async (id: string, score: string) => {
     const item = useCases.find((u) => u.id === id);
     if (!item) return;
-    await saveItem({ ...item, score });
+    const ok = await saveItem({ ...item, score });
+    if (!ok) toast.push({ kind: 'error', message: "Couldn't save the AI score", actionLabel: 'Retry', onAction: () => void handleScoreSaved(id, score) });
+  }, [useCases, saveItem, toast]);
+
+  // Inline quick-edit (status / priority) with optimistic update, autosave, and undo.
+  const applyFieldChange = useCallback(async (item: UseCaseItem, field: 'status' | 'priority', nextValue: string) => {
+    if (item[field] === nextValue) return;
+    const prevValue = item[field];
+    const stampedUpdated = new Date().toISOString();
+    const label = field === 'status' ? 'Status' : 'Priority';
+
+    setUseCases((prev) => prev.map((u) => (u.id === item.id ? { ...u, [field]: nextValue, updated: stampedUpdated } : u)));
+
+    const toastId = toast.push({
+      kind: 'success',
+      message: `${label} changed to "${nextValue}"`,
+      actionLabel: 'Undo',
+      onAction: () => { void applyFieldChange({ ...item, [field]: nextValue, updated: stampedUpdated }, field, prevValue); },
+    });
+
+    try {
+      const res = await fetch('/api/usecases', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...item, [field]: nextValue, updated: stampedUpdated }),
+      });
+      if (!res.ok) throw new Error('Failed');
+    } catch {
+      setUseCases((prev) => prev.map((u) => (u.id === item.id ? { ...u, [field]: prevValue } : u)));
+      toast.update(toastId, {
+        kind: 'error',
+        message: `Couldn't save ${label.toLowerCase()} change`,
+        actionLabel: 'Retry',
+        onAction: () => void applyFieldChange(item, field, nextValue),
+      });
+    }
+  }, [toast]);
+
+  // Bulk actions
+  const bulkSetField = useCallback(async (ids: string[], field: 'status' | 'priority', value: string) => {
+    const targets = useCases.filter((u) => ids.includes(u.id));
+    if (targets.length === 0) return;
+    setBulkBusy(true);
+    const label = field === 'status' ? 'status' : 'priority';
+    const toastId = toast.push({ kind: 'pending', message: `Updating ${targets.length} use case${targets.length > 1 ? 's' : ''}…` });
+    const stampedUpdated = new Date().toISOString();
+    const prevValues = new Map(targets.map((t) => [t.id, t[field]]));
+
+    setUseCases((prev) => prev.map((u) => (ids.includes(u.id) ? { ...u, [field]: value, updated: stampedUpdated } : u)));
+
+    const results = await Promise.allSettled(targets.map(async (t) => {
+      const res = await fetch('/api/usecases', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...t, [field]: value, updated: stampedUpdated }),
+      });
+      if (!res.ok) throw new Error('failed');
+    }));
+    const failedIds = targets.filter((_, i) => results[i].status === 'rejected').map((t) => t.id);
+
+    if (failedIds.length > 0) {
+      setUseCases((prev) => prev.map((u) => (failedIds.includes(u.id) ? { ...u, [field]: prevValues.get(u.id) ?? u[field] } : u)));
+      toast.update(toastId, {
+        kind: 'error',
+        message: `${targets.length - failedIds.length} updated, ${failedIds.length} failed`,
+        actionLabel: 'Retry failed',
+        onAction: () => void bulkSetField(failedIds, field, value),
+      });
+    } else {
+      toast.update(toastId, { kind: 'success', message: `Updated ${label} on ${targets.length} use case${targets.length > 1 ? 's' : ''}`, actionLabel: undefined, onAction: undefined });
+    }
+    setBulkBusy(false);
+  }, [useCases, toast]);
+
+  const bulkDelete = useCallback(async (ids: string[]) => {
+    if (ids.length === 0) return;
+    if (!confirm(`Delete ${ids.length} use case${ids.length > 1 ? 's' : ''}? This can't be undone.`)) return;
+    setBulkBusy(true);
+    const toastId = toast.push({ kind: 'pending', message: `Deleting ${ids.length} use case${ids.length > 1 ? 's' : ''}…` });
+    const results = await Promise.allSettled(ids.map(async (id) => {
+      const res = await fetch('/api/usecases', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) });
+      if (!res.ok) throw new Error('failed');
+    }));
+    const failedIds = ids.filter((_, i) => results[i].status === 'rejected');
+    await loadData({ silent: true });
+    setSelectedIds(new Set(failedIds));
+    if (failedIds.length === 0) {
+      toast.update(toastId, { kind: 'success', message: `Deleted ${ids.length} use case${ids.length > 1 ? 's' : ''}`, actionLabel: undefined, onAction: undefined });
+    } else {
+      toast.update(toastId, {
+        kind: 'error',
+        message: `${ids.length - failedIds.length} deleted, ${failedIds.length} failed`,
+        actionLabel: 'Retry failed',
+        onAction: () => void bulkDelete(failedIds),
+      });
+    }
+    setBulkBusy(false);
+  }, [toast, loadData]);
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
   };
+  const clearSelection = useCallback(() => setSelectedIds(new Set()), []);
 
   const filtered = useMemo(() => useCases.filter((item) => {
     const text = `${item.id} ${item.name} ${item.department} ${item.stakeholder} ${item.description} ${item.notes}`.toLowerCase();
@@ -754,6 +1299,32 @@ export default function UseCasePortfolioApp() {
       (statusFilter === 'All' || item.status === statusFilter) &&
       (deptFilter === 'All' || item.department === deptFilter);
   }), [useCases, search, statusFilter, deptFilter]);
+
+  const [sortKey, setSortKey] = useState<SortableKey | null>(null);
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+
+  const toggleSort = (key: SortableKey) => {
+    if (sortKey === key) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+    else { setSortKey(key); setSortDir('asc'); }
+  };
+
+  const sorted = useMemo(() => {
+    if (!sortKey) return filtered;
+    const numeric = sortKey === 'value_amount' || sortKey === 'score';
+    const dateLike = sortKey === 'updated' || sortKey === 'end_date';
+    const arr = [...filtered];
+    arr.sort((a, b) => {
+      let av: string | number = a[sortKey] ?? '';
+      let bv: string | number = b[sortKey] ?? '';
+      if (numeric) { av = parseFloat(String(av)) || 0; bv = parseFloat(String(bv)) || 0; }
+      else if (dateLike) { av = new Date(String(av)).getTime() || 0; bv = new Date(String(bv)).getTime() || 0; }
+      else { av = String(av).toLowerCase(); bv = String(bv).toLowerCase(); }
+      if (av < bv) return sortDir === 'asc' ? -1 : 1;
+      if (av > bv) return sortDir === 'asc' ? 1 : -1;
+      return 0;
+    });
+    return arr;
+  }, [filtered, sortKey, sortDir]);
 
   const stats = useMemo(() => ({
     total: useCases.length,
@@ -763,6 +1334,41 @@ export default function UseCasePortfolioApp() {
   }), [useCases]);
 
   const departments = useMemo(() => ['All', ...Array.from(new Set(useCases.map((i) => i.department).filter(Boolean)))], [useCases]);
+
+  const allVisibleSelected = isEditor && sorted.length > 0 && sorted.every((u) => selectedIds.has(u.id));
+  const toggleSelectAllVisible = () => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (allVisibleSelected) sorted.forEach((u) => next.delete(u.id));
+      else sorted.forEach((u) => next.add(u.id));
+      return next;
+    });
+  };
+
+  const openPalette = useCallback(() => setPaletteOpen(true), []);
+  const openAddForm = useCallback(() => { setEditingItem(null); setFormOpen(true); }, []);
+  const openItem = useCallback((item: UseCaseItem) => setActiveItem(item), []);
+
+  // Global keyboard shortcuts: Ctrl/Cmd+K = command palette, Esc = close topmost panel.
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      const mod = e.metaKey || e.ctrlKey;
+      if (mod && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setPaletteOpen((v) => !v);
+        return;
+      }
+      if (e.key === 'Escape') {
+        if (paletteOpen) { setPaletteOpen(false); return; }
+        if (aiOpen) { setAiOpen(false); return; }
+        if (formOpen) { setFormOpen(false); return; }
+        if (activeItem) { setActiveItem(null); return; }
+        if (selectedIds.size > 0) { clearSelection(); return; }
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [paletteOpen, aiOpen, formOpen, activeItem, selectedIds, clearSelection]);
 
   return (
     <div className="min-h-screen bg-slate-100 p-4 md:p-8">
@@ -782,7 +1388,23 @@ export default function UseCasePortfolioApp() {
             </div>
             <div className="flex flex-col items-start gap-3 md:items-end">
               <AccessBadge role={userRole} />
-              <div className="flex gap-2">
+              <div className="flex flex-wrap justify-end gap-2">
+                <Button
+                  className="border border-white/30 bg-white/10 text-white hover:bg-white/20"
+                  onClick={openPalette}
+                  type="button"
+                >
+                  <Command className="h-4 w-4" /> Jump to
+                  <kbd className="rounded bg-white/10 px-1.5 py-0.5 text-[10px]">{modLabel}K</kbd>
+                </Button>
+                <Button
+                  className="border border-white/30 bg-white/10 text-white hover:bg-white/20"
+                  onClick={() => void loadData()}
+                  disabled={loading}
+                  type="button"
+                >
+                  <RefreshCw className={cn('h-4 w-4', loading && 'animate-spin')} /> Refresh
+                </Button>
                 {isEditor && (
                   <>
                     <Button className="border border-white/30 bg-white/10 text-white hover:bg-white/20" onClick={() => setAiOpen(true)} type="button">
@@ -794,19 +1416,6 @@ export default function UseCasePortfolioApp() {
             </div>
           </div>
         </motion.div>
-
-        {notice && (
-          <Card>
-            <CardContent className="flex items-center justify-between gap-3 p-4 text-sm text-slate-600">
-              <span>{notice}</span>
-              <Button variant="outline" onClick={() => void loadData()} type="button"><RefreshCw className="h-4 w-4" /> Refresh</Button>
-            </CardContent>
-          </Card>
-        )}
-
-        {usingDemo && !notice && (
-          <Card><CardContent className="p-4 text-sm text-slate-500">Showing demo data — live Google Sheets data will appear once the API is connected.</CardContent></Card>
-        )}
 
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <StatCard title="Total use cases" value={stats.total} subtitle="Across current and future portfolio" icon={Briefcase} />
@@ -824,28 +1433,38 @@ export default function UseCasePortfolioApp() {
                   <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search use cases, stakeholder, department..." className="h-11 pl-11" />
                 </div>
                 <div className="relative">
-                  <Filter className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                  <Filter className="pointer-events-none absolute left-4 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-slate-400" />
                   <Select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="h-11 w-full pl-10 md:w-[180px]">
                     <option value="All">All statuses</option>
                     {statusOptions.map((o) => <option key={o} value={o}>{o}</option>)}
                   </Select>
                 </div>
                 <div className="relative">
-                  <Building2 className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                  <Building2 className="pointer-events-none absolute left-4 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-slate-400" />
                   <Select value={deptFilter} onChange={(e) => setDeptFilter(e.target.value)} className="h-11 w-full pl-10 md:w-[180px]">
                     {departments.map((d) => <option key={d} value={d}>{d === 'All' ? 'All departments' : d}</option>)}
                   </Select>
                 </div>
               </div>
-              <div className="inline-flex rounded-2xl bg-slate-100 p-1">
-                <button className={cn('inline-flex items-center rounded-xl px-3 py-2 text-sm', view === 'table' ? 'bg-white shadow-sm' : 'text-slate-600')} onClick={() => setView('table')} type="button">
-                  <Table2 className="mr-2 h-4 w-4" /> Table
-                </button>
-                <button className={cn('inline-flex items-center rounded-xl px-3 py-2 text-sm', view === 'cards' ? 'bg-white shadow-sm' : 'text-slate-600')} onClick={() => setView('cards')} type="button">
-                  <LayoutGrid className="mr-2 h-4 w-4" /> Cards
-                </button>
+              <div className="flex items-center gap-3">
+                <div className="inline-flex rounded-2xl bg-slate-100 p-1">
+                  <button className={cn('inline-flex items-center rounded-xl px-3 py-2 text-sm', view === 'table' ? 'bg-white shadow-sm' : 'text-slate-600')} onClick={() => setView('table')} type="button">
+                    <Table2 className="mr-2 h-4 w-4" /> Table
+                  </button>
+                  <button className={cn('inline-flex items-center rounded-xl px-3 py-2 text-sm', view === 'cards' ? 'bg-white shadow-sm' : 'text-slate-600')} onClick={() => setView('cards')} type="button">
+                    <LayoutGrid className="mr-2 h-4 w-4" /> Cards
+                  </button>
+                </div>
+                {isEditor && (
+                  <Button onClick={openAddForm} type="button">
+                    <Plus className="h-4 w-4" /> Add use case
+                  </Button>
+                )}
               </div>
             </div>
+            <p className="mt-3 text-xs text-slate-400">
+              Tip: click a status or priority badge to change it instantly. Press <kbd className="rounded border border-slate-200 px-1 py-0.5">{modLabel}K</kbd> to jump to any use case, <kbd className="rounded border border-slate-200 px-1 py-0.5">Esc</kbd> to close panels.
+            </p>
           </CardContent>
         </Card>
 
@@ -857,43 +1476,71 @@ export default function UseCasePortfolioApp() {
                   <table className="min-w-full text-left">
                     <thead className="bg-slate-50 text-sm text-slate-500">
                       <tr>
-                        <th className="px-6 py-4 font-medium">Use Case</th>
-                        <th className="px-6 py-4 font-medium">Department</th>
-                        <th className="px-6 py-4 font-medium">Stakeholder</th>
-                        <th className="px-6 py-4 font-medium">Status</th>
-                        <th className="px-6 py-4 font-medium">Priority</th>
-                        {isEditor && <th className="px-6 py-4 font-medium">Value</th>}
-                        {isEditor && <th className="px-6 py-4 font-medium">Score</th>}
-                        <th className="px-6 py-4 font-medium">Horizon</th>
-                        <th className="px-6 py-4 font-medium">Updated</th>
+                        {isEditor && (
+                          <th className="w-10 px-4 py-4">
+                            <button type="button" onClick={toggleSelectAllVisible} aria-label={allVisibleSelected ? 'Deselect all visible' : 'Select all visible'}>
+                              {allVisibleSelected ? <CheckSquare className="h-4 w-4 text-slate-700" /> : <Square className="h-4 w-4 text-slate-300" />}
+                            </button>
+                          </th>
+                        )}
+                        <SortHeader label="Use Case" sortKey="name" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
+                        <SortHeader label="Department" sortKey="department" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
+                        <SortHeader label="Stakeholder" sortKey="stakeholder" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
+                        <SortHeader label="Status" sortKey="status" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
+                        <SortHeader label="Priority" sortKey="priority" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
+                        {isEditor && <SortHeader label="Value" sortKey="value_amount" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />}
+                        {isEditor && <SortHeader label="Score" sortKey="score" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />}
+                        <SortHeader label="Horizon" sortKey="horizon" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
+                        <SortHeader label="End Date" sortKey="end_date" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
+                        <SortHeader label="Updated" sortKey="updated" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
                         <th className="px-6 py-4 font-medium text-right">Actions</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {filtered.map((item) => {
+                      {sorted.map((item) => {
                         const signs = getValueSigns(item.value_amount);
+                        const selected = selectedIds.has(item.id);
                         return (
-                          <tr key={item.id} className="border-t border-slate-100 transition-colors hover:bg-slate-50/70">
+                          <tr
+                            key={item.id}
+                            className={cn('cursor-pointer border-t border-slate-100 transition-colors hover:bg-slate-50/70', selected && 'bg-slate-50')}
+                            onClick={() => setActiveItem(item)}
+                          >
+                            {isEditor && (
+                              <td className="px-4 py-4" onClick={(e) => e.stopPropagation()}>
+                                <button type="button" onClick={() => toggleSelect(item.id)} aria-label={selected ? 'Deselect' : 'Select'}>
+                                  {selected ? <CheckSquare className="h-4 w-4 text-slate-900" /> : <Square className="h-4 w-4 text-slate-300" />}
+                                </button>
+                              </td>
+                            )}
                             <td className="px-6 py-4">
-                              <button className="group text-left" onClick={() => setActiveItem(item)} type="button">
+                              <div className="group text-left">
                                 <div className="font-medium text-slate-900 group-hover:text-slate-700">{item.name}</div>
                                 <div className="mt-1 text-xs text-slate-500">{item.id}</div>
-                              </button>
+                              </div>
                             </td>
                             <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-700">{item.department}</td>
                             <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-700">{item.stakeholder}</td>
-                            <td className="px-6 py-4"><Badge className={cn('border', statusStyles[item.status])}>{item.status}</Badge></td>
-                            <td className="px-6 py-4"><Badge className={cn('border', priorityStyles[item.priority])}>{item.priority}</Badge></td>
+                            <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
+                              <InlineSelectBadge value={item.status} options={statusOptions} styles={statusStyles} isEditor={isEditor} ariaLabel="status" onChange={(v) => void applyFieldChange(item, 'status', v)} />
+                            </td>
+                            <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
+                              <InlineSelectBadge value={item.priority} options={priorityOptions} styles={priorityStyles} isEditor={isEditor} ariaLabel="priority" onChange={(v) => void applyFieldChange(item, 'priority', v)} />
+                            </td>
                             {isEditor && <td className="whitespace-nowrap px-6 py-4 text-sm font-semibold text-emerald-600">{signs}</td>}
                             {isEditor && <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-700">{item.score ? `${item.score}/100` : '—'}</td>}
                             <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-700">{item.horizon}</td>
-                            <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-500">{item.updated}</td>
-                            <td className="px-6 py-4 text-right">
+                            <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-500">{item.end_date || '—'}</td>
+                            <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-500">{formatUpdated(item.updated)}</td>
+                            <td className="px-6 py-4 text-right" onClick={(e) => e.stopPropagation()}>
                               <div className="flex justify-end gap-2">
                                 <Button variant="outline" onClick={() => setActiveItem(item)} type="button">View</Button>
                                 {isEditor && (
                                   <>
                                     <Button variant="ghost" onClick={() => { setEditingItem(item); setFormOpen(true); }} type="button"><Pencil className="h-4 w-4" /></Button>
+                                    <Button variant="ghost" onClick={() => void deleteItem(item.id)} type="button" aria-label="Delete use case">
+                                      <Trash2 className="h-4 w-4 text-rose-500" />
+                                    </Button>
                                   </>
                                 )}
                               </div>
@@ -912,9 +1559,20 @@ export default function UseCasePortfolioApp() {
             <motion.div key="cards" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
               {filtered.map((item) => {
                 const signs = getValueSigns(item.value_amount);
+                const selected = selectedIds.has(item.id);
                 return (
-                  <Card key={item.id} className="rounded-[28px] transition-transform hover:-translate-y-1">
-                    <CardHeader className="pb-3">
+                  <Card key={item.id} className={cn('relative flex h-full flex-col rounded-[28px] transition-transform hover:-translate-y-1', selected && 'ring-2 ring-slate-900')}>
+                    {isEditor && (
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); toggleSelect(item.id); }}
+                        className="absolute left-4 top-4 z-10 rounded-md bg-white/95 p-0.5 shadow-sm"
+                        aria-label={selected ? 'Deselect' : 'Select'}
+                      >
+                        {selected ? <CheckSquare className="h-4 w-4 text-slate-900" /> : <Square className="h-4 w-4 text-slate-400" />}
+                      </button>
+                    )}
+                    <CardHeader className={cn('pb-3', isEditor && 'pl-12')}>
                       <div className="flex items-start justify-between gap-3">
                         <div>
                           <CardTitle className="leading-6">{item.name}</CardTitle>
@@ -923,24 +1581,27 @@ export default function UseCasePortfolioApp() {
                         <ChevronRight className="h-5 w-5 text-slate-400" />
                       </div>
                     </CardHeader>
-                    <CardContent className="space-y-4 pt-0">
-                      <div className="flex flex-wrap gap-2">
-                        <Badge className={cn('border', statusStyles[item.status])}>{item.status}</Badge>
-                        <Badge className={cn('border', priorityStyles[item.priority])}>{item.priority}</Badge>
+                    <CardContent className="flex flex-1 flex-col space-y-4 pt-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <InlineSelectBadge value={item.status} options={statusOptions} styles={statusStyles} isEditor={isEditor} ariaLabel="status" onChange={(v) => void applyFieldChange(item, 'status', v)} />
+                        <InlineSelectBadge value={item.priority} options={priorityOptions} styles={priorityStyles} isEditor={isEditor} ariaLabel="priority" onChange={(v) => void applyFieldChange(item, 'priority', v)} />
                         {isEditor && signs && <Badge className="border border-emerald-200 bg-emerald-50 text-emerald-700">{signs}</Badge>}
                         {isEditor && item.score && <Badge className="border border-slate-200 bg-slate-50 text-slate-700">{item.score}/100</Badge>}
                       </div>
-                      <p className="text-sm leading-6 text-slate-600">{item.description}</p>
+                      {item.description && <ClampedText text={item.description} />}
                       <div className="grid gap-3 text-sm text-slate-600">
                         <div className="flex items-center gap-2"><Building2 className="h-4 w-4" /> {item.department}</div>
                         <div className="flex items-center gap-2"><User2 className="h-4 w-4" /> {item.stakeholder}</div>
                         <div className="flex items-center gap-2"><CalendarDays className="h-4 w-4" /> {item.horizon}</div>
                       </div>
-                      <div className="flex gap-2 pt-2">
+                      <div className="mt-auto flex gap-2 pt-2">
                         <Button className="flex-1" onClick={() => setActiveItem(item)} type="button">Open details</Button>
                         {isEditor && (
                           <>
                             <Button variant="outline" onClick={() => { setEditingItem(item); setFormOpen(true); }} type="button"><Pencil className="h-4 w-4" /></Button>
+                            <Button variant="outline" onClick={() => void deleteItem(item.id)} type="button" aria-label="Delete use case">
+                              <Trash2 className="h-4 w-4 text-rose-500" />
+                            </Button>
                           </>
                         )}
                       </div>
@@ -954,13 +1615,23 @@ export default function UseCasePortfolioApp() {
 
         <GanttChart items={filtered} />
 
-        <UseCaseForm open={formOpen} onOpenChange={setFormOpen} onSave={(item) => void saveItem(item)} editingItem={editingItem} />
+        <UseCaseForm open={formOpen} onOpenChange={setFormOpen} onSave={saveItem} editingItem={editingItem} modLabel={modLabel} />
 
         <AIPanel
           open={aiOpen}
           onClose={() => setAiOpen(false)}
           allUseCases={useCases}
           onScoreSaved={(id, score) => void handleScoreSaved(id, score)}
+        />
+
+        <CommandPalette
+          open={paletteOpen}
+          onClose={() => setPaletteOpen(false)}
+          useCases={useCases}
+          onOpenItem={(item) => { openItem(item); setPaletteOpen(false); }}
+          onAddNew={() => { openAddForm(); setPaletteOpen(false); }}
+          isEditor={isEditor}
+          modLabel={modLabel}
         />
 
         <Drawer open={Boolean(activeItem)} onClose={() => setActiveItem(null)}>
@@ -975,9 +1646,9 @@ export default function UseCasePortfolioApp() {
                   </div>
                   <Button size="icon" variant="secondary" onClick={() => setActiveItem(null)} type="button"><X className="h-4 w-4" /></Button>
                 </div>
-                <div className="flex flex-wrap gap-2">
-                  <Badge className={cn('border border-white/20', statusStyles[activeItem.status])}>{activeItem.status}</Badge>
-                  <Badge className={cn('border border-white/20', priorityStyles[activeItem.priority])}>{activeItem.priority}</Badge>
+                <div className="flex flex-wrap items-center gap-2">
+                  <InlineSelectBadge value={activeItem.status} options={statusOptions} styles={statusStyles} isEditor={isEditor} ariaLabel="status" onChange={(v) => { void applyFieldChange(activeItem, 'status', v); setActiveItem((cur) => (cur ? { ...cur, status: v } : cur)); }} />
+                  <InlineSelectBadge value={activeItem.priority} options={priorityOptions} styles={priorityStyles} isEditor={isEditor} ariaLabel="priority" onChange={(v) => { void applyFieldChange(activeItem, 'priority', v); setActiveItem((cur) => (cur ? { ...cur, priority: v } : cur)); }} />
                   <Badge className="border border-white/20 bg-white/10 text-white">{activeItem.horizon}</Badge>
                   {isEditor && getValueSigns(activeItem.value_amount) && (
                     <Badge className="border border-emerald-400/30 bg-emerald-400/20 text-emerald-300">{getValueSigns(activeItem.value_amount)}</Badge>
@@ -1069,11 +1740,14 @@ export default function UseCasePortfolioApp() {
 
                 {isEditor && (
                   <div className="flex gap-3 pt-2">
-                    <Button disabled={saving} onClick={() => { setEditingItem(activeItem); setFormOpen(true); }} type="button">
+                    <Button disabled={saving} onClick={() => { setEditingItem(activeItem); setFormOpen(true); setActiveItem(null); }} type="button">
                       <Pencil className="h-4 w-4" /> Edit use case
                     </Button>
                   <Button variant="outline" onClick={() => setAiOpen(true)} type="button">
   <Bot className="h-4 w-4" /> AI Assistant
+</Button>
+<Button variant="outline" disabled={saving} onClick={() => void deleteItem(activeItem.id)} type="button">
+  <Trash2 className="h-4 w-4 text-rose-500" /> Delete
 </Button>
 </div>
                 )}
@@ -1081,7 +1755,29 @@ export default function UseCasePortfolioApp() {
             </>
           )}
         </Drawer>
+
+        <AnimatePresence>
+          {isEditor && selectedIds.size > 0 && (
+            <BulkActionBar
+              key="bulk-bar"
+              count={selectedIds.size}
+              busy={bulkBusy}
+              onSetStatus={(v) => void bulkSetField(Array.from(selectedIds), 'status', v)}
+              onSetPriority={(v) => void bulkSetField(Array.from(selectedIds), 'priority', v)}
+              onDelete={() => void bulkDelete(Array.from(selectedIds))}
+              onClear={clearSelection}
+            />
+          )}
+        </AnimatePresence>
       </div>
     </div>
+  );
+}
+
+export default function UseCasePortfolioApp() {
+  return (
+    <ToastProvider>
+      <UseCasePortfolioAppInner />
+    </ToastProvider>
   );
 }
