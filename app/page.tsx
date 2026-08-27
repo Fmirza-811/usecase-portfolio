@@ -2,10 +2,11 @@
 
 import React, { useEffect, useLayoutEffect, useMemo, useState, useCallback, useRef, useContext } from 'react';
 import type { ReactNode, ButtonHTMLAttributes, InputHTMLAttributes, TextareaHTMLAttributes, SelectHTMLAttributes } from 'react';
+import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Plus, Search, Filter, LayoutGrid, Table2, CalendarDays, Building2, User2,
-  Sparkles, Target, ChevronRight, ChevronDown, X, Pencil, Briefcase, Clock3, Shield, Eye,
+  Plus, Search, LayoutGrid, Table2, CalendarDays, Building2, User2,
+  ChevronRight, ChevronDown, X, Pencil,
   RefreshCw, Trash2, BarChart2, Upload, FileText, Send, Bot, Sliders,
   ArrowUp, ArrowDown, ArrowUpDown, Command, Loader2, CheckCircle2, AlertTriangle, Info,
   Square, CheckSquare, type LucideIcon,
@@ -113,28 +114,24 @@ const statusOptions = ['Idea', 'In Discovery', 'Planned', 'In Progress', 'Blocke
 const priorityOptions = ['Low', 'Medium', 'High', 'Critical'] as const;
 const horizonOptions = ['Current Quarter', 'Next Quarter', 'Future Pipeline'] as const;
 
-const statusStyles: Record<string, string> = {
-  Idea: 'bg-slate-100 text-slate-700 border-slate-200',
-  'In Discovery': 'bg-blue-100 text-blue-700 border-blue-200',
-  Planned: 'bg-violet-100 text-violet-700 border-violet-200',
-  'In Progress': 'bg-amber-100 text-amber-700 border-amber-200',
-  Blocked: 'bg-rose-100 text-rose-700 border-rose-200',
-  Live: 'bg-emerald-100 text-emerald-700 border-emerald-200',
-  'On Hold': 'bg-zinc-100 text-zinc-700 border-zinc-200',
-  Removed: 'bg-neutral-200 text-neutral-500 border-neutral-300 line-through',
+// Apple-direction palette: status reads as a small colored dot + text, never a filled pill.
+const statusDotColors: Record<string, string> = {
+  Idea: '#A1A1A6',
+  'In Discovery': '#0A84FF',
+  Planned: '#5E5CE6',
+  'In Progress': '#118BA1',
+  Blocked: '#C4384A',
+  Live: '#22A55C',
+  'On Hold': '#A1A1A6',
+  Removed: '#C7C7CC',
 };
 
-const statusBarColors: Record<string, string> = {
-  Idea: 'bg-slate-400', 'In Discovery': 'bg-blue-400', Planned: 'bg-violet-400',
-  'In Progress': 'bg-amber-400', Blocked: 'bg-rose-400', Live: 'bg-emerald-400', 'On Hold': 'bg-zinc-400',
-  Removed: 'bg-neutral-400',
-};
-
-const priorityStyles: Record<string, string> = {
-  Low: 'bg-slate-100 text-slate-700 border-slate-200',
-  Medium: 'bg-blue-100 text-blue-700 border-blue-200',
-  High: 'bg-orange-100 text-orange-700 border-orange-200',
-  Critical: 'bg-rose-100 text-rose-700 border-rose-200',
+// Priority reads as weight + color intensity on plain text, never a badge.
+const priorityTextStyles: Record<string, string> = {
+  Low: 'text-ink-tertiary font-normal',
+  Medium: 'text-ink-secondary font-medium',
+  High: 'text-ink font-semibold',
+  Critical: 'text-[#C4384A] font-semibold',
 };
 
 function getValueSigns(amount: string): string {
@@ -173,14 +170,14 @@ function ClampedText({ text }: { text: string }) {
 
   return (
     <div>
-      <p ref={ref} className={cn('text-sm leading-6 text-slate-600', !expanded && 'line-clamp-3')}>
+      <p ref={ref} className={cn('text-sm leading-6 text-ink-secondary', !expanded && 'line-clamp-3')}>
         {text}
       </p>
       {(overflowing || expanded) && (
         <button
           type="button"
           onClick={(e) => { e.stopPropagation(); setExpanded((v) => !v); }}
-          className="mt-1 text-xs font-semibold text-slate-500 transition hover:text-slate-900"
+          className="mt-1 text-xs font-semibold text-accent transition hover:text-accent-deep"
         >
           {expanded ? 'Show less' : 'See more'}
         </button>
@@ -249,10 +246,10 @@ function useToastState() {
 }
 
 const toastVisuals: Record<ToastKind, { icon: LucideIcon; className: string }> = {
-  pending: { icon: Loader2, className: 'bg-slate-900 text-white' },
-  success: { icon: CheckCircle2, className: 'bg-slate-900 text-white' },
-  error: { icon: AlertTriangle, className: 'bg-rose-600 text-white' },
-  info: { icon: Info, className: 'bg-slate-900 text-white' },
+  pending: { icon: Loader2, className: 'bg-ink text-white' },
+  success: { icon: CheckCircle2, className: 'bg-ink text-white' },
+  error: { icon: AlertTriangle, className: 'bg-[#C4384A] text-white' },
+  info: { icon: Info, className: 'bg-ink text-white' },
 };
 
 function ToastStack({ toasts, onDismiss }: { toasts: ToastItem[]; onDismiss: (id: string) => void }) {
@@ -304,10 +301,10 @@ function ToastProvider({ children }: { children: ReactNode }) {
 }
 
 type SurfaceProps = { className?: string; children: ReactNode };
-function Card({ className, children }: SurfaceProps) { return <div className={cn('rounded-3xl bg-white shadow-sm', className)}>{children}</div>; }
+function Card({ className, children }: SurfaceProps) { return <div className={cn('rounded-2xl border border-hairline bg-white', className)}>{children}</div>; }
 function CardHeader({ className, children }: SurfaceProps) { return <div className={cn('p-6 pb-3', className)}>{children}</div>; }
-function CardTitle({ className, children }: SurfaceProps) { return <h3 className={cn('text-lg font-semibold text-slate-900', className)}>{children}</h3>; }
-function CardDescription({ className, children }: SurfaceProps) { return <p className={cn('text-sm text-slate-500', className)}>{children}</p>; }
+function CardTitle({ className, children }: SurfaceProps) { return <h3 className={cn('text-lg font-semibold text-ink', className)}>{children}</h3>; }
+function CardDescription({ className, children }: SurfaceProps) { return <p className={cn('text-sm text-ink-tertiary', className)}>{children}</p>; }
 function CardContent({ className, children }: SurfaceProps) { return <div className={cn('p-6', className)}>{children}</div>; }
 
 type ButtonVariant = 'default' | 'outline' | 'ghost' | 'secondary' | 'danger';
@@ -316,87 +313,129 @@ type ButtonProps = { className?: string; variant?: ButtonVariant; size?: ButtonS
 
 function Button({ className, variant = 'default', size = 'default', children, ...props }: ButtonProps) {
   const variants: Record<ButtonVariant, string> = {
-    default: 'bg-slate-900 text-white hover:bg-slate-800',
-    outline: 'border border-slate-200 bg-white text-slate-900 hover:bg-slate-50',
-    ghost: 'bg-transparent text-slate-700 hover:bg-slate-100',
-    secondary: 'bg-slate-100 text-slate-900 hover:bg-slate-200',
-    danger: 'bg-rose-600 text-white hover:bg-rose-700',
+    default: 'bg-accent text-white hover:opacity-90',
+    outline: 'border border-hairline bg-white text-ink hover:bg-[#FAFAFA]',
+    ghost: 'bg-transparent text-ink-secondary hover:bg-black/[0.04]',
+    secondary: 'bg-black/[0.05] text-ink hover:bg-black/[0.08]',
+    danger: 'bg-[#C4384A] text-white hover:opacity-90',
   };
   const sizes: Record<ButtonSize, string> = { default: 'h-10 px-4 py-2', icon: 'h-10 w-10 p-0' };
   return (
-    <button className={cn('inline-flex items-center justify-center gap-2 rounded-2xl text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-50', variants[variant], sizes[size], className)} {...props}>
+    <button className={cn('inline-flex items-center justify-center gap-2 rounded-full text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-50', variants[variant], sizes[size], className)} {...props}>
       {children}
     </button>
   );
 }
 
 function Input({ className, ...props }: { className?: string } & InputHTMLAttributes<HTMLInputElement>) {
-  return <input className={cn('w-full rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-slate-300', className)} {...props} />;
+  return <input className={cn('w-full rounded-full border border-hairline bg-white px-4 py-2.5 text-sm text-ink outline-none placeholder:text-ink-tertiary focus:border-accent', className)} {...props} />;
 }
 function Textarea({ className, ...props }: { className?: string } & TextareaHTMLAttributes<HTMLTextAreaElement>) {
-  return <textarea className={cn('w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-slate-300', className)} {...props} />;
+  return <textarea className={cn('w-full rounded-2xl border border-hairline bg-white px-4 py-3 text-sm text-ink outline-none placeholder:text-ink-tertiary focus:border-accent', className)} {...props} />;
 }
 function Select({ className, children, ...props }: { className?: string; children: ReactNode } & SelectHTMLAttributes<HTMLSelectElement>) {
   return (
     <div className="relative">
       <select
         className={cn(
-          'w-full appearance-none rounded-2xl border border-slate-200 bg-white px-4 py-2.5 pr-8 text-sm text-slate-900 outline-none focus:border-slate-300',
+          'w-full appearance-none rounded-full border border-hairline bg-white px-4 py-2.5 pr-8 text-sm text-ink outline-none focus:border-accent',
           className
         )}
         {...props}
       >
         {children}
       </select>
-      <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+      <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-tertiary" />
     </div>
   );
 }
-function Badge({ className, children }: SurfaceProps) {
-  return <span className={cn('inline-flex items-center whitespace-nowrap rounded-full border px-3 py-1 text-xs font-medium', className)}>{children}</span>;
-}
 
-// ── Inline quick-edit badge (status / priority) ─────────────────────────────────
-function InlineSelectBadge({ value, options, styles, isEditor, onChange, ariaLabel }: {
+// ── Inline quick-edit status (dot + text) ───────────────────────────────────────
+function StatusIndicator({ value, isEditor, onChange }: {
   value: string;
-  options: readonly string[];
-  styles: Record<string, string>;
   isEditor: boolean;
   onChange: (next: string) => void;
-  ariaLabel: string;
 }) {
   const [editing, setEditing] = useState(false);
-
-  if (!isEditor) {
-    return <Badge className={cn('border', styles[value])}>{value}</Badge>;
-  }
+  const dot = statusDotColors[value] ?? '#A1A1A6';
 
   if (editing) {
     return (
       <select
         autoFocus
         value={value}
-        aria-label={`Change ${ariaLabel}`}
+        aria-label="Change status"
         onClick={(e) => e.stopPropagation()}
         onChange={(e) => { onChange(e.target.value); setEditing(false); }}
         onBlur={() => setEditing(false)}
         onKeyDown={(e) => { if (e.key === 'Escape') { e.stopPropagation(); setEditing(false); } }}
-        className="rounded-full border border-slate-300 bg-white px-2.5 py-1 text-xs font-medium text-slate-900 outline-none"
+        className="rounded-full border border-hairline bg-white px-2.5 py-1 text-xs font-medium text-ink outline-none"
       >
-        {options.map((o) => <option key={o} value={o}>{o}</option>)}
+        {statusOptions.map((o) => <option key={o} value={o}>{o}</option>)}
       </select>
     );
   }
+
+  const content = (
+    <span className="inline-flex items-center gap-2 text-sm text-ink">
+      <span className="h-[7px] w-[7px] shrink-0 rounded-full" style={{ background: dot }} />
+      {value}
+    </span>
+  );
+
+  if (!isEditor) return content;
 
   return (
     <button
       type="button"
       onClick={(e) => { e.stopPropagation(); setEditing(true); }}
-      aria-label={`Change ${ariaLabel} (currently ${value})`}
-      title={`Click to change ${ariaLabel}`}
-      className="rounded-full transition hover:ring-2 hover:ring-slate-300 hover:ring-offset-1"
+      aria-label={`Change status (currently ${value})`}
+      title="Click to change status"
+      className="-mx-1.5 rounded-full px-1.5 py-0.5 transition hover:bg-black/[0.04]"
     >
-      <Badge className={cn('border', styles[value])}>{value}</Badge>
+      {content}
+    </button>
+  );
+}
+
+// ── Inline quick-edit priority (weight + color, no badge) ──────────────────────
+function PriorityIndicator({ value, isEditor, onChange }: {
+  value: string;
+  isEditor: boolean;
+  onChange: (next: string) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+
+  if (editing) {
+    return (
+      <select
+        autoFocus
+        value={value}
+        aria-label="Change priority"
+        onClick={(e) => e.stopPropagation()}
+        onChange={(e) => { onChange(e.target.value); setEditing(false); }}
+        onBlur={() => setEditing(false)}
+        onKeyDown={(e) => { if (e.key === 'Escape') { e.stopPropagation(); setEditing(false); } }}
+        className="rounded-full border border-hairline bg-white px-2.5 py-1 text-xs font-medium text-ink outline-none"
+      >
+        {priorityOptions.map((o) => <option key={o} value={o}>{o}</option>)}
+      </select>
+    );
+  }
+
+  const content = <span className={cn('text-sm', priorityTextStyles[value])}>{value}</span>;
+
+  if (!isEditor) return content;
+
+  return (
+    <button
+      type="button"
+      onClick={(e) => { e.stopPropagation(); setEditing(true); }}
+      aria-label={`Change priority (currently ${value})`}
+      title="Click to change priority"
+      className="-mx-1.5 rounded-full px-1.5 py-0.5 transition hover:bg-black/[0.04]"
+    >
+      {content}
     </button>
   );
 }
@@ -406,47 +445,30 @@ function SortHeader({ label, sortKey, activeKey, dir, onSort, align }: {
 }) {
   const active = activeKey === sortKey;
   return (
-    <th className={cn('whitespace-nowrap px-6 py-4 font-medium', align === 'right' && 'text-right')}>
+    <th className={cn('whitespace-nowrap px-6 py-3.5 text-xs font-semibold uppercase tracking-wide text-ink-tertiary', align === 'right' && 'text-right')}>
       <button
         type="button"
         onClick={() => onSort(sortKey)}
-        className={cn('inline-flex items-center gap-1.5 transition-colors hover:text-slate-700', active && 'text-slate-900')}
+        className={cn('inline-flex items-center gap-1.5 normal-case tracking-normal transition-colors hover:text-ink', active && 'text-ink')}
       >
         {label}
         {active ? (
           dir === 'asc' ? <ArrowUp className="h-3.5 w-3.5" /> : <ArrowDown className="h-3.5 w-3.5" />
         ) : (
-          <ArrowUpDown className="h-3.5 w-3.5 text-slate-300" />
+          <ArrowUpDown className="h-3.5 w-3.5 text-ink-tertiary" />
         )}
       </button>
     </th>
   );
 }
 
-function StatCard({ title, value, icon: Icon, subtitle }: { title: string; value: number; icon: LucideIcon; subtitle: string }) {
-  return (
-    <Card className="border-0">
-      <CardContent className="p-5">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <p className="text-sm text-slate-500">{title}</p>
-            <p className="mt-2 text-3xl font-semibold tracking-tight text-slate-900">{value}</p>
-            <p className="mt-1 text-sm text-slate-500">{subtitle}</p>
-          </div>
-          <div className="rounded-2xl bg-slate-100 p-3"><Icon className="h-5 w-5 text-slate-700" /></div>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
 function AccessBadge({ role }: { role: UserRole }) {
   const isEditor = role === 'editor';
   return (
-    <Badge className={cn('border', isEditor ? 'border-emerald-200 bg-emerald-100 text-emerald-700' : 'border-slate-200 bg-slate-100 text-slate-700')}>
-      {isEditor ? <Shield className="mr-1 h-3.5 w-3.5" /> : <Eye className="mr-1 h-3.5 w-3.5" />}
+    <div className="inline-flex items-center gap-2 text-sm text-ink-secondary">
+      <span className="h-[6px] w-[6px] rounded-full" style={{ background: isEditor ? 'var(--color-live)' : '#A1A1A6' }} />
       {isEditor ? 'Editor access' : 'Viewer access'}
-    </Badge>
+    </div>
   );
 }
 
@@ -454,19 +476,19 @@ type ModalProps = { open: boolean; onClose: () => void; title: string; descripti
 function Modal({ open, onClose, title, description, children, footer }: ModalProps) {
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/50 p-4">
-      <div className="max-h-[90vh] w-full max-w-3xl overflow-auto rounded-3xl bg-white shadow-2xl">
-        <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 px-6 py-5 text-white">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/25 p-4">
+      <div className="max-h-[90vh] w-full max-w-3xl overflow-auto rounded-2xl bg-white shadow-2xl">
+        <div className="border-b border-hairline px-6 py-5">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <h2 className="text-2xl font-semibold">{title}</h2>
-              {description && <p className="mt-1 text-sm text-slate-300">{description}</p>}
+              <h2 className="text-2xl font-semibold tracking-tight text-ink">{title}</h2>
+              {description && <p className="mt-1 text-sm text-ink-secondary">{description}</p>}
             </div>
-            <Button size="icon" variant="secondary" onClick={onClose} type="button"><X className="h-4 w-4" /></Button>
+            <Button size="icon" variant="ghost" onClick={onClose} type="button"><X className="h-4 w-4" /></Button>
           </div>
         </div>
         <div>{children}</div>
-        {footer && <div className="border-t bg-slate-50 px-6 py-4">{footer}</div>}
+        {footer && <div className="border-t border-hairline bg-canvas px-6 py-4">{footer}</div>}
       </div>
     </div>
   );
@@ -475,7 +497,7 @@ function Modal({ open, onClose, title, description, children, footer }: ModalPro
 function Drawer({ open, onClose, children }: { open: boolean; onClose: () => void; children: ReactNode }) {
   return (
     <div className={cn('fixed inset-0 z-50 transition', open ? 'pointer-events-auto' : 'pointer-events-none')}>
-      <div className={cn('absolute inset-0 bg-slate-900/40 transition-opacity', open ? 'opacity-100' : 'opacity-0')} onClick={onClose} />
+      <div className={cn('absolute inset-0 bg-black/20 transition-opacity', open ? 'opacity-100' : 'opacity-0')} onClick={onClose} />
       <div className={cn('absolute right-0 top-0 h-full w-full max-w-2xl overflow-auto bg-white shadow-2xl transition-transform', open ? 'translate-x-0' : 'translate-x-full')}>
         {children}
       </div>
@@ -530,41 +552,44 @@ function CommandPalette({ open, onClose, useCases, onOpenItem, onAddNew, isEdito
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-[70] flex items-start justify-center bg-slate-900/50 p-4 pt-[12vh]" onClick={onClose}>
-      <div className="w-full max-w-xl overflow-hidden rounded-3xl bg-white shadow-2xl" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center gap-3 border-b border-slate-100 px-5 py-4">
-          <Search className="h-4 w-4 shrink-0 text-slate-400" />
+    <div className="fixed inset-0 z-[70] flex items-start justify-center bg-black/20 p-4 pt-[12vh]" onClick={onClose}>
+      <div
+        className="w-full max-w-xl overflow-hidden rounded-2xl border border-white/70 bg-white/85 shadow-2xl backdrop-blur-2xl backdrop-saturate-150"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center gap-3 border-b border-black/[0.06] px-5 py-4">
+          <Search className="h-4 w-4 shrink-0 text-ink-tertiary" />
           <input
             ref={inputRef}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Jump to a use case, or add a new one..."
-            className="w-full text-sm text-slate-900 outline-none placeholder:text-slate-400"
+            className="w-full bg-transparent text-sm text-ink outline-none placeholder:text-ink-tertiary"
             onKeyDown={(e) => {
               if (e.key === 'ArrowDown') { e.preventDefault(); setHighlight((h) => Math.min(h + 1, entries.length - 1)); }
               else if (e.key === 'ArrowUp') { e.preventDefault(); setHighlight((h) => Math.max(h - 1, 0)); }
               else if (e.key === 'Enter') { e.preventDefault(); entries[highlight]?.onSelect(); }
             }}
           />
-          <kbd className="shrink-0 rounded-md border border-slate-200 px-1.5 py-0.5 text-[10px] text-slate-400">Esc</kbd>
+          <kbd className="shrink-0 rounded-md border border-hairline bg-white px-1.5 py-0.5 text-[10px] text-ink-tertiary">Esc</kbd>
         </div>
         <div className="max-h-80 overflow-y-auto py-2">
-          {entries.length === 0 && <div className="px-5 py-6 text-sm text-slate-400">No matches.</div>}
+          {entries.length === 0 && <div className="px-5 py-6 text-sm text-ink-tertiary">No matches.</div>}
           {entries.map((entry, i) => (
             <button
               key={entry.id}
               type="button"
               onClick={entry.onSelect}
               onMouseEnter={() => setHighlight(i)}
-              className={cn('flex w-full flex-col items-start gap-0.5 px-5 py-2.5 text-left transition-colors', i === highlight ? 'bg-slate-100' : 'hover:bg-slate-50')}
+              className={cn('flex w-full flex-col items-start gap-0.5 px-5 py-2.5 text-left transition-colors', i === highlight ? 'bg-black/[0.04]' : 'hover:bg-black/[0.02]')}
             >
-              <span className="text-sm font-medium text-slate-900">{entry.title}</span>
-              <span className="text-xs text-slate-500">{entry.subtitle}</span>
+              <span className="text-sm font-semibold text-ink">{entry.title}</span>
+              <span className="text-xs text-ink-secondary">{entry.subtitle}</span>
             </button>
           ))}
         </div>
-        <div className="border-t border-slate-100 px-5 py-2.5 text-[11px] text-slate-400">
-          <kbd className="rounded border border-slate-200 px-1 py-0.5">↑↓</kbd> navigate · <kbd className="rounded border border-slate-200 px-1 py-0.5">Enter</kbd> select · <kbd className="rounded border border-slate-200 px-1 py-0.5">{modLabel}K</kbd> toggle
+        <div className="border-t border-black/[0.06] px-5 py-2.5 text-[11px] text-ink-tertiary">
+          <kbd className="rounded border border-hairline px-1 py-0.5">↑↓</kbd> navigate · <kbd className="rounded border border-hairline px-1 py-0.5">Enter</kbd> select · <kbd className="rounded border border-hairline px-1 py-0.5">{modLabel}K</kbd> toggle
         </div>
       </div>
     </div>
@@ -585,14 +610,14 @@ function BulkActionBar({ count, onSetStatus, onSetPriority, onDelete, onClear, b
       initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 24 }}
       className="fixed inset-x-0 bottom-6 z-[65] flex justify-center px-4"
     >
-      <div className="flex flex-wrap items-center gap-3 rounded-2xl bg-slate-900 px-5 py-3 text-white shadow-2xl">
+      <div className="flex flex-wrap items-center gap-3 rounded-full bg-ink px-5 py-3 text-white shadow-2xl">
         <span className="text-sm font-medium">{count} selected</span>
         <div className="h-5 w-px bg-white/20" />
         <select
           defaultValue=""
           disabled={busy}
           onChange={(e) => { if (e.target.value) onSetStatus(e.target.value); e.target.value = ''; }}
-          className="h-9 rounded-xl border border-white/20 bg-white/10 px-3 text-xs text-white outline-none disabled:opacity-50 [&>option]:text-slate-900"
+          className="h-9 rounded-full border border-white/20 bg-white/10 px-3 text-xs text-white outline-none disabled:opacity-50 [&>option]:text-ink"
         >
           <option value="" disabled>Set status…</option>
           {statusOptions.map((o) => <option key={o} value={o}>{o}</option>)}
@@ -601,7 +626,7 @@ function BulkActionBar({ count, onSetStatus, onSetPriority, onDelete, onClear, b
           defaultValue=""
           disabled={busy}
           onChange={(e) => { if (e.target.value) onSetPriority(e.target.value); e.target.value = ''; }}
-          className="h-9 rounded-xl border border-white/20 bg-white/10 px-3 text-xs text-white outline-none disabled:opacity-50 [&>option]:text-slate-900"
+          className="h-9 rounded-full border border-white/20 bg-white/10 px-3 text-xs text-white outline-none disabled:opacity-50 [&>option]:text-ink"
         >
           <option value="" disabled>Set priority…</option>
           {priorityOptions.map((o) => <option key={o} value={o}>{o}</option>)}
@@ -627,7 +652,7 @@ function GanttChart({ items }: { items: UseCaseItem[] }) {
   return !isNaN(s.getTime()) && !isNaN(e.getTime());
 });
   if (validItems.length === 0) return (
-    <Card className="rounded-[28px]"><CardContent className="p-8 text-center text-slate-500">No timeline data available.</CardContent></Card>
+    <Card><CardContent className="p-8 text-center text-ink-tertiary">No timeline data available.</CardContent></Card>
   );
   const allDates = validItems.flatMap((i) => [new Date(i.start_date), new Date(i.end_date)]);
   const minDate = new Date(Math.min(...allDates.map((d) => d.getTime())));
@@ -651,27 +676,27 @@ function GanttChart({ items }: { items: UseCaseItem[] }) {
     <>
       {tooltip && (
         <div className="fixed z-50 pointer-events-none" style={{ left: tooltip.x + 12, top: tooltip.y - 60 }}>
-          <div className="rounded-2xl bg-slate-900 shadow-2xl px-4 py-3 text-xs">
+          <div className="rounded-2xl bg-ink shadow-2xl px-4 py-3 text-xs">
             <p className="font-semibold text-white text-sm">{tooltip.item.status}</p>
-            <p className="text-slate-400 mt-1">{tooltip.item.start_date} → {tooltip.item.end_date}</p>
+            <p className="text-white/60 mt-1">{tooltip.item.start_date} → {tooltip.item.end_date}</p>
           </div>
         </div>
       )}
-      <Card className="overflow-hidden rounded-[28px]">
-        <div className="border-b border-slate-100 px-6 py-4">
-          <div className="flex items-center gap-2"><BarChart2 className="h-5 w-5 text-slate-500" /><h3 className="font-semibold text-slate-900">Timeline</h3></div>
+      <Card className="overflow-hidden">
+        <div className="border-b border-hairline-soft px-6 py-4">
+          <div className="flex items-center gap-2"><BarChart2 className="h-5 w-5 text-ink-secondary" /><h3 className="font-semibold text-ink">Timeline</h3></div>
         </div>
         <div className="p-6">
           <div className="overflow-x-auto">
             <div style={{ minWidth: '600px' }}>
               <div className="relative mb-3 ml-48 h-6">
-                {months.map((m, i) => <div key={i} className="absolute text-xs text-slate-400" style={{ left: `${m.left}%`, width: `${m.width}%` }}>{m.label}</div>)}
+                {months.map((m, i) => <div key={i} className="absolute text-xs text-ink-tertiary" style={{ left: `${m.left}%`, width: `${m.width}%` }}>{m.label}</div>)}
               </div>
               <div className="relative ml-48 space-y-3">
-                {months.map((m, i) => <div key={i} className="pointer-events-none absolute top-0 bottom-0 border-l border-slate-100" style={{ left: `${m.left}%` }} />)}
+                {months.map((m, i) => <div key={i} className="pointer-events-none absolute top-0 bottom-0 border-l border-hairline-soft" style={{ left: `${m.left}%` }} />)}
                 {showToday && (
-                  <div className="pointer-events-none absolute top-0 bottom-0 z-10 border-l-2 border-indigo-400" style={{ left: `${todayPct}%` }}>
-                    <span className="absolute -top-6 -translate-x-1/2 rounded bg-indigo-400 px-1.5 py-0.5 text-xs text-white">Today</span>
+                  <div className="pointer-events-none absolute top-0 bottom-0 z-10 border-l-2 border-accent" style={{ left: `${todayPct}%` }}>
+                    <span className="absolute -top-6 -translate-x-1/2 rounded bg-accent px-1.5 py-0.5 text-xs text-white">Today</span>
                   </div>
                 )}
                 {validItems.map((item) => {
@@ -679,14 +704,14 @@ function GanttChart({ items }: { items: UseCaseItem[] }) {
 const end = new Date(item.end_date.trim());
                   const leftPct = (start.getTime() - minDate.getTime()) / (1000 * 60 * 60 * 24) / totalDays * 100;
                   const widthPct = (end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24) / totalDays * 100;
-                  const barColor = statusBarColors[item.status] ?? 'bg-slate-400';
+                  const barColor = statusDotColors[item.status] ?? '#A1A1A6';
                   return (
                     <div key={item.id} className="flex items-center gap-0">
-                      <div className="absolute -ml-48 w-44 truncate pr-3 text-right text-sm text-slate-700" title={item.name}>{item.name}</div>
-                      <div className="relative h-8 w-full rounded-xl bg-slate-50">
+                      <div className="absolute -ml-48 w-44 truncate pr-3 text-right text-sm text-ink-secondary" title={item.name}>{item.name}</div>
+                      <div className="relative h-8 w-full rounded-xl bg-canvas">
                         <div
-                          className={cn('absolute h-full rounded-xl opacity-90 transition-all cursor-pointer', barColor)}
-                          style={{ left: `${Math.max(0, leftPct)}%`, width: `${Math.min(100 - Math.max(0, leftPct), widthPct)}%` }}
+                          className="absolute h-full rounded-xl opacity-90 transition-all cursor-pointer"
+                          style={{ left: `${Math.max(0, leftPct)}%`, width: `${Math.min(100 - Math.max(0, leftPct), widthPct)}%`, background: barColor }}
                           onMouseEnter={(e) => setTooltip({ x: e.clientX, y: e.clientY, item })}
                           onMouseMove={(e) => setTooltip({ x: e.clientX, y: e.clientY, item })}
                           onMouseLeave={() => setTooltip(null)}
@@ -697,9 +722,9 @@ const end = new Date(item.end_date.trim());
                 })}
               </div>
               <div className="mt-6 flex flex-wrap gap-3">
-                {Object.entries(statusBarColors).map(([status, color]) => (
-                  <div key={status} className="flex items-center gap-1.5 text-xs text-slate-500">
-                    <div className={cn('h-3 w-3 rounded-full', color)} />{status}
+                {Object.entries(statusDotColors).map(([status, color]) => (
+                  <div key={status} className="flex items-center gap-1.5 text-xs text-ink-secondary">
+                    <div className="h-2.5 w-2.5 rounded-full" style={{ background: color }} />{status}
                   </div>
                 ))}
               </div>
@@ -782,24 +807,24 @@ function AIPanel({ open, onClose, allUseCases, onScoreSaved }: {
 
   return (
     <div className={cn('fixed inset-0 z-50 transition', open ? 'pointer-events-auto' : 'pointer-events-none')}>
-      <div className={cn('absolute inset-0 bg-slate-900/40 transition-opacity', open ? 'opacity-100' : 'opacity-0')} onClick={onClose} />
+      <div className={cn('absolute inset-0 bg-black/20 transition-opacity', open ? 'opacity-100' : 'opacity-0')} onClick={onClose} />
       <div className={cn('absolute right-0 top-0 h-full w-full max-w-2xl bg-white shadow-2xl transition-transform flex flex-col', open ? 'translate-x-0' : 'translate-x-full')}>
-        <div className="bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 px-6 py-5 text-white">
+        <div className="border-b border-hairline px-6 py-5">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="rounded-2xl bg-white/10 p-2"><Bot className="h-5 w-5" /></div>
+              <div className="rounded-full bg-accent/10 p-2"><Bot className="h-5 w-5 text-accent" /></div>
               <div>
-                <h2 className="text-lg font-semibold">AI Use Case Assistant</h2>
-                <p className="text-xs text-slate-300">Define, document and rank use cases</p>
+                <h2 className="text-lg font-semibold text-ink">AI Use Case Assistant</h2>
+                <p className="text-xs text-ink-secondary">Define, document and rank use cases</p>
               </div>
             </div>
-            <Button size="icon" variant="secondary" onClick={onClose} type="button"><X className="h-4 w-4" /></Button>
+            <Button size="icon" variant="ghost" onClick={onClose} type="button"><X className="h-4 w-4" /></Button>
           </div>
           <div className="mt-4 flex gap-2">
-            <button onClick={() => setActiveTab('chat')} className={cn('flex items-center gap-2 rounded-2xl px-4 py-2 text-sm transition', activeTab === 'chat' ? 'bg-white text-slate-900' : 'text-slate-300 hover:bg-white/10')} type="button">
+            <button onClick={() => setActiveTab('chat')} className={cn('flex items-center gap-2 rounded-full px-4 py-2 text-sm transition', activeTab === 'chat' ? 'bg-accent text-white' : 'text-ink-secondary hover:bg-black/[0.04]')} type="button">
               <Send className="h-4 w-4" /> Chat
             </button>
-            <button onClick={() => setActiveTab('score')} className={cn('flex items-center gap-2 rounded-2xl px-4 py-2 text-sm transition', activeTab === 'score' ? 'bg-white text-slate-900' : 'text-slate-300 hover:bg-white/10')} type="button">
+            <button onClick={() => setActiveTab('score')} className={cn('flex items-center gap-2 rounded-full px-4 py-2 text-sm transition', activeTab === 'score' ? 'bg-accent text-white' : 'text-ink-secondary hover:bg-black/[0.04]')} type="button">
               <Sliders className="h-4 w-4" /> Score & Rank
             </button>
           </div>
@@ -810,19 +835,19 @@ function AIPanel({ open, onClose, allUseCases, onScoreSaved }: {
             <div className="flex-1 overflow-y-auto p-6 space-y-4">
               {messages.map((m, i) => (
                 <div key={i} className={cn('flex', m.role === 'user' ? 'justify-end' : 'justify-start')}>
-                  <div className={cn('max-w-[80%] rounded-3xl px-4 py-3 text-sm leading-6 whitespace-pre-wrap', m.role === 'user' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-800')}>
+                  <div className={cn('max-w-[80%] rounded-3xl px-4 py-3 text-sm leading-6 whitespace-pre-wrap', m.role === 'user' ? 'bg-accent text-white' : 'bg-canvas text-ink')}>
                     {m.content}
                   </div>
                 </div>
               ))}
               {loading && (
                 <div className="flex justify-start">
-                  <div className="bg-slate-100 rounded-3xl px-4 py-3 text-sm text-slate-500">Thinking...</div>
+                  <div className="bg-canvas rounded-3xl px-4 py-3 text-sm text-ink-secondary">Thinking...</div>
                 </div>
               )}
               <div ref={messagesEndRef} />
             </div>
-            <div className="border-t p-4">
+            <div className="border-t border-hairline p-4">
               <div className="flex gap-2">
                 <Input value={input} onChange={(e) => setInput(e.target.value)} placeholder="Describe a use case or ask a question..." onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void sendMessage(); } }} />
                 <Button onClick={() => void sendMessage()} disabled={loading || !input.trim()} type="button" size="icon">
@@ -836,7 +861,7 @@ function AIPanel({ open, onClose, allUseCases, onScoreSaved }: {
         {activeTab === 'score' && (
           <div className="flex-1 overflow-y-auto p-6 space-y-6">
             <div>
-              <label className="mb-2 block text-sm font-medium text-slate-700">Select use case to score</label>
+              <label className="mb-2 block text-sm font-medium text-ink-secondary">Select use case to score</label>
               <Select
                 value={selectedForScoring?.id ?? ''}
                 onChange={(e) => {
@@ -853,26 +878,26 @@ function AIPanel({ open, onClose, allUseCases, onScoreSaved }: {
 
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <h3 className="font-semibold text-slate-900">Scoring factors</h3>
-                <span className={cn('text-xs font-medium', totalWeight === 100 ? 'text-emerald-600' : 'text-rose-600')}>
+                <h3 className="font-semibold text-ink">Scoring factors</h3>
+                <span className={cn('text-xs font-medium', totalWeight === 100 ? 'text-[var(--color-live)]' : 'text-[#C4384A]')}>
                   Total: {totalWeight}% {totalWeight !== 100 ? '(must equal 100%)' : '✓'}
                 </span>
               </div>
-              <p className="text-sm text-slate-500">Adjust weights to reflect your priorities. Must add up to 100%.</p>
+              <p className="text-sm text-ink-secondary">Adjust weights to reflect your priorities. Must add up to 100%.</p>
             </div>
 
             <div className="grid gap-4 md:grid-cols-2">
               {(Object.keys(weights) as (keyof ScoreWeights)[]).map((key) => (
-                <div key={key} className="rounded-2xl border border-slate-200 p-4">
+                <div key={key} className="rounded-2xl border border-hairline p-4">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-semibold text-slate-900">{weightLabels[key].label}</span>
+                    <span className="text-sm font-semibold text-ink">{weightLabels[key].label}</span>
                     <div className="flex items-center gap-1">
-                      <span className="text-sm text-slate-500">{weights[key]}%</span>
-                      <button onClick={() => setWeights((w) => ({ ...w, [key]: Math.max(0, w[key] - 5) }))} className="text-slate-400 hover:text-slate-700 px-1" type="button">↓</button>
-                      <button onClick={() => setWeights((w) => ({ ...w, [key]: Math.min(100, w[key] + 5) }))} className="text-slate-400 hover:text-slate-700 px-1" type="button">↑</button>
+                      <span className="text-sm text-ink-secondary">{weights[key]}%</span>
+                      <button onClick={() => setWeights((w) => ({ ...w, [key]: Math.max(0, w[key] - 5) }))} className="text-ink-tertiary hover:text-ink px-1" type="button">↓</button>
+                      <button onClick={() => setWeights((w) => ({ ...w, [key]: Math.min(100, w[key] + 5) }))} className="text-ink-tertiary hover:text-ink px-1" type="button">↑</button>
                     </div>
                   </div>
-                  <p className="text-xs text-slate-500">{weightLabels[key].desc}</p>
+                  <p className="text-xs text-ink-tertiary">{weightLabels[key].desc}</p>
                 </div>
               ))}
             </div>
@@ -887,25 +912,25 @@ function AIPanel({ open, onClose, allUseCases, onScoreSaved }: {
             </Button>
 
             {scoreResult && selectedForScoring && (
-              <div className="rounded-3xl border border-slate-200 overflow-hidden">
-                <div className="bg-slate-900 px-6 py-4 flex items-center justify-between">
+              <div className="rounded-2xl border border-hairline overflow-hidden">
+                <div className="bg-ink px-6 py-4 flex items-center justify-between">
                   <div>
                     <span className="text-white font-semibold">{selectedForScoring.name}</span>
-                    <p className="text-slate-400 text-xs mt-0.5">AI Priority Score</p>
+                    <p className="text-white/50 text-xs mt-0.5">AI Priority Score</p>
                   </div>
-                  <span className="text-3xl font-bold text-white">{scoreResult.total}<span className="text-sm text-slate-400">/100</span></span>
+                  <span className="text-3xl font-bold text-white">{scoreResult.total}<span className="text-sm text-white/50">/100</span></span>
                 </div>
                 <div className="p-5 space-y-3">
                   {Object.entries(scoreResult.breakdown).map(([key, val]) => (
                     <div key={key} className="flex items-center gap-3">
-                      <span className="text-sm text-slate-600 w-36">{weightLabels[key as keyof ScoreWeights]?.label ?? key}</span>
-                      <div className="flex-1 h-2 rounded-full bg-slate-100">
-                        <div className="h-full rounded-full bg-slate-900" style={{ width: `${(val / 5) * 100}%` }} />
+                      <span className="text-sm text-ink-secondary w-36">{weightLabels[key as keyof ScoreWeights]?.label ?? key}</span>
+                      <div className="flex-1 h-2 rounded-full bg-canvas">
+                        <div className="h-full rounded-full bg-accent" style={{ width: `${(val / 5) * 100}%` }} />
                       </div>
-                      <span className="text-sm font-medium text-slate-900">{val}/5</span>
+                      <span className="text-sm font-medium text-ink">{val}/5</span>
                     </div>
                   ))}
-                  <p className="text-sm text-slate-600 pt-2 border-t">{scoreResult.reasoning}</p>
+                  <p className="text-sm text-ink-secondary pt-2 border-t border-hairline-soft">{scoreResult.reasoning}</p>
                 </div>
               </div>
             )}
@@ -989,9 +1014,9 @@ function UseCaseForm({ open, onOpenChange, onSave, editingItem, modLabel }: {
         <div className="flex items-center justify-between gap-4">
           <p className="text-xs">
             {submitError ? (
-              <span className="font-medium text-rose-600">{submitError}</span>
+              <span className="font-medium text-[#C4384A]">{submitError}</span>
             ) : (
-              <span className="text-slate-400">Press <kbd className="rounded border border-slate-200 px-1 py-0.5">{modLabel}</kbd>+<kbd className="rounded border border-slate-200 px-1 py-0.5">Enter</kbd> to save</span>
+              <span className="text-ink-tertiary">Press <kbd className="rounded border border-hairline px-1 py-0.5">{modLabel}</kbd>+<kbd className="rounded border border-hairline px-1 py-0.5">Enter</kbd> to save</span>
             )}
           </p>
           <div className="flex shrink-0 justify-end gap-3">
@@ -1005,11 +1030,11 @@ function UseCaseForm({ open, onOpenChange, onSave, editingItem, modLabel }: {
     >
       <div className="grid gap-4 p-6 md:grid-cols-2">
         <div>
-          <label className="mb-2 block text-sm font-medium text-slate-700">Use Case ID</label>
+          <label className="mb-2 block text-sm font-medium text-ink-secondary">Use Case ID</label>
           <Input value={form.id} onChange={(e) => update('id', e.target.value)} placeholder="UC-005" />
         </div>
         <div>
-          <label className="mb-2 block text-sm font-medium text-slate-700">Department</label>
+          <label className="mb-2 block text-sm font-medium text-ink-secondary">Department</label>
           <Select value={form.department} onChange={(e) => update('department', e.target.value)}>
             <option value="">Select department</option>
             <option value="Pre-Sales">Pre-Sales</option>
@@ -1028,55 +1053,55 @@ function UseCaseForm({ open, onOpenChange, onSave, editingItem, modLabel }: {
           </Select>
         </div>
         <div className="md:col-span-2">
-          <label className="mb-2 block text-sm font-medium text-slate-700">Use Case Name</label>
+          <label className="mb-2 block text-sm font-medium text-ink-secondary">Use Case Name</label>
           <Input value={form.name} onChange={(e) => update('name', e.target.value)} placeholder="Collections optimization assistant" />
         </div>
         <div>
-          <label className="mb-2 block text-sm font-medium text-slate-700">Primary Stakeholder</label>
+          <label className="mb-2 block text-sm font-medium text-ink-secondary">Primary Stakeholder</label>
           <Input value={form.stakeholder} onChange={(e) => update('stakeholder', e.target.value)} placeholder="Fatima Mirza" />
         </div>
         <div>
-          <label className="mb-2 block text-sm font-medium text-slate-700">Last Updated</label>
-          <div className="flex h-[42px] items-center rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-500">
+          <label className="mb-2 block text-sm font-medium text-ink-secondary">Last Updated</label>
+          <div className="flex h-[42px] items-center rounded-full border border-hairline bg-canvas px-4 text-sm text-ink-secondary">
             {editingItem ? formatUpdated(form.updated) : 'Set automatically when saved'}
           </div>
         </div>
         <div>
-          <label className="mb-2 block text-sm font-medium text-slate-700">Status</label>
+          <label className="mb-2 block text-sm font-medium text-ink-secondary">Status</label>
           <Select value={form.status} onChange={(e) => update('status', e.target.value)}>
             {statusOptions.map((o) => <option key={o} value={o}>{o}</option>)}
           </Select>
         </div>
         <div>
-          <label className="mb-2 block text-sm font-medium text-slate-700">Priority</label>
+          <label className="mb-2 block text-sm font-medium text-ink-secondary">Priority</label>
           <Select value={form.priority} onChange={(e) => update('priority', e.target.value)}>
             {priorityOptions.map((o) => <option key={o} value={o}>{o}</option>)}
           </Select>
         </div>
         <div className="md:col-span-2">
-          <label className="mb-2 block text-sm font-medium text-slate-700">Portfolio Horizon</label>
+          <label className="mb-2 block text-sm font-medium text-ink-secondary">Portfolio Horizon</label>
           <Select value={form.horizon} onChange={(e) => update('horizon', e.target.value)}>
             {horizonOptions.map((o) => <option key={o} value={o}>{o}</option>)}
           </Select>
         </div>
         <div>
-          <label className="mb-2 block text-sm font-medium text-slate-700">Start Date</label>
+          <label className="mb-2 block text-sm font-medium text-ink-secondary">Start Date</label>
           <Input type="date" value={form.start_date} onChange={(e) => update('start_date', e.target.value)} />
         </div>
         <div>
-          <label className="mb-2 block text-sm font-medium text-slate-700">End Date</label>
+          <label className="mb-2 block text-sm font-medium text-ink-secondary">End Date</label>
           <Input type="date" value={form.end_date} onChange={(e) => update('end_date', e.target.value)} />
         </div>
         <div className="md:col-span-2">
-          <label className="mb-2 block text-sm font-medium text-slate-700">Estimated Value (USD)</label>
+          <label className="mb-2 block text-sm font-medium text-ink-secondary">Estimated Value (USD)</label>
           <div className="relative">
             <Input value={form.value_amount} onChange={(e) => update('value_amount', e.target.value)} placeholder="e.g. 150000" type="number" className="pr-16" />
-            {signs && <span className="absolute right-4 top-1/2 -translate-y-1/2 text-emerald-600 font-semibold text-sm">{signs}</span>}
+            {signs && <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[var(--color-live)] font-semibold text-sm">{signs}</span>}
           </div>
-          <p className="mt-1 text-xs text-slate-400">Under $10k = $ · $10k–$1M = $$ · Over $1M = $$$</p>
+          <p className="mt-1 text-xs text-ink-tertiary">Under $10k = $ · $10k–$1M = $$ · Over $1M = $$$</p>
         </div>
         <div className="md:col-span-2">
-          <label className="mb-2 block text-sm font-medium text-slate-700">BRD Document</label>
+          <label className="mb-2 block text-sm font-medium text-ink-secondary">BRD Document</label>
           <div className="flex gap-2">
             <Input value={form.brd_url} onChange={(e) => update('brd_url', e.target.value)} placeholder="Paste link or upload file" className="flex-1" />
             <Button variant="outline" onClick={() => fileRef.current?.click()} disabled={uploading || !form.id} type="button">
@@ -1084,18 +1109,18 @@ function UseCaseForm({ open, onOpenChange, onSave, editingItem, modLabel }: {
             </Button>
             <input ref={fileRef} type="file" accept=".pdf,.doc,.docx" className="hidden" onChange={handleFileUpload} />
           </div>
-          {!form.id && <p className="mt-1 text-xs text-amber-500">Enter a Use Case ID first to enable file upload</p>}
+          {!form.id && <p className="mt-1 text-xs text-[#B8860B]">Enter a Use Case ID first to enable file upload</p>}
         </div>
         <div className="md:col-span-2">
-          <label className="mb-2 block text-sm font-medium text-slate-700">Description</label>
+          <label className="mb-2 block text-sm font-medium text-ink-secondary">Description</label>
           <Textarea value={form.description} onChange={(e) => update('description', e.target.value)} className="min-h-[110px]" />
         </div>
         <div className="md:col-span-2">
-          <label className="mb-2 block text-sm font-medium text-slate-700">Expected Impact</label>
+          <label className="mb-2 block text-sm font-medium text-ink-secondary">Expected Impact</label>
           <Textarea value={form.impact} onChange={(e) => update('impact', e.target.value)} className="min-h-[90px]" />
         </div>
         <div className="md:col-span-2">
-          <label className="mb-2 block text-sm font-medium text-slate-700">Notes</label>
+          <label className="mb-2 block text-sm font-medium text-ink-secondary">Notes</label>
           <Textarea value={form.notes} onChange={(e) => update('notes', e.target.value)} className="min-h-[90px]" />
         </div>
       </div>
@@ -1371,87 +1396,85 @@ function UseCasePortfolioAppInner() {
   }, [paletteOpen, aiOpen, formOpen, activeItem, selectedIds, clearSelection]);
 
   return (
-    <div className="min-h-screen bg-slate-100 p-4 md:p-8">
+    <div className="min-h-screen bg-canvas p-4 md:p-8">
       <div className="mx-auto max-w-7xl space-y-6">
 
-        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
-          className="overflow-hidden rounded-[28px] bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 p-6 text-white shadow-xl md:p-8">
-          <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
-            <div className="max-w-3xl">
-              <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1 text-sm text-white/90">
-                <Sparkles className="h-4 w-4" /> Use Case Portfolio
-              </div>
-              <h1 className="text-3xl font-semibold tracking-tight md:text-5xl">AI Use Case Portfolio</h1>
-              <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-300 md:text-base">
-                Centralized view of ongoing initiatives, pipeline opportunities, and ownership across the organization.
-              </p>
-            </div>
-            <div className="flex flex-col items-start gap-3 md:items-end">
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <Image src="/transcend-logo.png" alt="Transcend AI Labs" width={381} height={134} priority className="h-7 w-auto" />
+            <div className="flex items-center gap-4">
               <AccessBadge role={userRole} />
-              <div className="flex flex-wrap justify-end gap-2">
-                <Button
-                  className="border border-white/30 bg-white/10 text-white hover:bg-white/20"
-                  onClick={openPalette}
-                  type="button"
-                >
-                  <Command className="h-4 w-4" /> Jump to
-                  <kbd className="rounded bg-white/10 px-1.5 py-0.5 text-[10px]">{modLabel}K</kbd>
+              <div className="h-4 w-px bg-hairline" />
+              <Button variant="outline" size="icon" onClick={() => void loadData()} disabled={loading} type="button" aria-label="Refresh">
+                <RefreshCw className={cn('h-4 w-4', loading && 'animate-spin')} />
+              </Button>
+              {isEditor && (
+                <Button variant="outline" onClick={() => setAiOpen(true)} type="button">
+                  <Bot className="h-4 w-4" /> AI Assistant
                 </Button>
-                <Button
-                  className="border border-white/30 bg-white/10 text-white hover:bg-white/20"
-                  onClick={() => void loadData()}
-                  disabled={loading}
-                  type="button"
-                >
-                  <RefreshCw className={cn('h-4 w-4', loading && 'animate-spin')} /> Refresh
-                </Button>
-                {isEditor && (
-                  <>
-                    <Button className="border border-white/30 bg-white/10 text-white hover:bg-white/20" onClick={() => setAiOpen(true)} type="button">
-                      <Bot className="h-4 w-4" /> AI Assistant
-                    </Button>
-                  </>
-                )}
-              </div>
+              )}
             </div>
           </div>
-        </motion.div>
 
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <StatCard title="Total use cases" value={stats.total} subtitle="Across current and future portfolio" icon={Briefcase} />
-          <StatCard title="Current quarter" value={stats.current} subtitle="Active focus for review" icon={Target} />
-          <StatCard title="Future pipeline" value={stats.future} subtitle="Ideas and planned initiatives" icon={Clock3} />
-          <StatCard title="Moving forward" value={stats.liveOrProgress} subtitle="Live or currently in progress" icon={CalendarDays} />
+          <div className="flex flex-col items-start justify-between gap-4 md:flex-row md:items-end">
+            <div className="max-w-2xl">
+              <h1 className="text-4xl font-bold tracking-tight text-accent md:text-[40px]">Use Case Portfolio</h1>
+              <p className="mt-2 max-w-xl text-base leading-6 text-ink-secondary">
+                Every AI initiative across NETSOL — where it stands, who owns it, and what&apos;s next.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={openPalette}
+              className="flex shrink-0 items-center gap-2 rounded-full border border-hairline bg-white px-4 py-2 text-sm text-ink-secondary transition hover:bg-[#FAFAFA]"
+            >
+              <Command className="h-4 w-4 opacity-60" />
+              {modLabel}K to jump to any use case
+            </button>
+          </div>
         </div>
 
-        <Card className="rounded-[28px]">
+        <div className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-hairline bg-hairline xl:grid-cols-4">
+          <div className="bg-white px-6 py-5">
+            <p className="text-[34px] font-bold leading-none tracking-tight text-ink">{stats.total}</p>
+            <p className="mt-2 text-sm text-ink-secondary">Total initiatives</p>
+          </div>
+          <div className="bg-white px-6 py-5">
+            <p className="text-[34px] font-bold leading-none tracking-tight" style={{ color: 'var(--color-live)' }}>{stats.liveOrProgress}</p>
+            <p className="mt-2 text-sm text-ink-secondary">Live or in progress</p>
+          </div>
+          <div className="bg-white px-6 py-5">
+            <p className="text-[34px] font-bold leading-none tracking-tight text-accent">{stats.current}</p>
+            <p className="mt-2 text-sm text-ink-secondary">Current quarter</p>
+          </div>
+          <div className="bg-white px-6 py-5">
+            <p className="text-[34px] font-bold leading-none tracking-tight text-ink-tertiary">{stats.future}</p>
+            <p className="mt-2 text-sm text-ink-secondary">Future pipeline</p>
+          </div>
+        </div>
+
+        <Card>
           <CardContent className="p-4 md:p-5">
-            <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+            <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
               <div className="flex flex-1 flex-col gap-3 md:flex-row">
-                <div className="relative flex-1">
-                  <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <div className="relative flex-1 md:min-w-[280px]">
+                  <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-tertiary" />
                   <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search use cases, stakeholder, department..." className="h-11 pl-11" />
                 </div>
-                <div className="relative">
-                  <Filter className="pointer-events-none absolute left-4 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                  <Select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="h-11 w-full pl-10 md:w-[180px]">
-                    <option value="All">All statuses</option>
-                    {statusOptions.map((o) => <option key={o} value={o}>{o}</option>)}
-                  </Select>
-                </div>
-                <div className="relative">
-                  <Building2 className="pointer-events-none absolute left-4 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                  <Select value={deptFilter} onChange={(e) => setDeptFilter(e.target.value)} className="h-11 w-full pl-10 md:w-[180px]">
-                    {departments.map((d) => <option key={d} value={d}>{d === 'All' ? 'All departments' : d}</option>)}
-                  </Select>
-                </div>
+                <Select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="h-11 w-full md:w-[170px]">
+                  <option value="All">All statuses</option>
+                  {statusOptions.map((o) => <option key={o} value={o}>{o}</option>)}
+                </Select>
+                <Select value={deptFilter} onChange={(e) => setDeptFilter(e.target.value)} className="h-11 w-full md:w-[170px]">
+                  {departments.map((d) => <option key={d} value={d}>{d === 'All' ? 'All departments' : d}</option>)}
+                </Select>
               </div>
               <div className="flex items-center gap-3">
-                <div className="inline-flex rounded-2xl bg-slate-100 p-1">
-                  <button className={cn('inline-flex items-center rounded-xl px-3 py-2 text-sm', view === 'table' ? 'bg-white shadow-sm' : 'text-slate-600')} onClick={() => setView('table')} type="button">
+                <div className="inline-flex rounded-full bg-black/[0.04] p-1">
+                  <button className={cn('inline-flex items-center rounded-full px-3 py-2 text-sm', view === 'table' ? 'border border-hairline bg-white text-ink' : 'text-ink-secondary')} onClick={() => setView('table')} type="button">
                     <Table2 className="mr-2 h-4 w-4" /> Table
                   </button>
-                  <button className={cn('inline-flex items-center rounded-xl px-3 py-2 text-sm', view === 'cards' ? 'bg-white shadow-sm' : 'text-slate-600')} onClick={() => setView('cards')} type="button">
+                  <button className={cn('inline-flex items-center rounded-full px-3 py-2 text-sm', view === 'cards' ? 'border border-hairline bg-white text-ink' : 'text-ink-secondary')} onClick={() => setView('cards')} type="button">
                     <LayoutGrid className="mr-2 h-4 w-4" /> Cards
                   </button>
                 </div>
@@ -1462,8 +1485,8 @@ function UseCasePortfolioAppInner() {
                 )}
               </div>
             </div>
-            <p className="mt-3 text-xs text-slate-400">
-              Tip: click a status or priority badge to change it instantly. Press <kbd className="rounded border border-slate-200 px-1 py-0.5">{modLabel}K</kbd> to jump to any use case, <kbd className="rounded border border-slate-200 px-1 py-0.5">Esc</kbd> to close panels.
+            <p className="mt-3 text-xs text-ink-tertiary">
+              Tip: click a status or priority to change it instantly. Press <kbd className="rounded border border-hairline px-1 py-0.5">{modLabel}K</kbd> to jump to any use case, <kbd className="rounded border border-hairline px-1 py-0.5">Esc</kbd> to close panels.
             </p>
           </CardContent>
         </Card>
@@ -1471,15 +1494,15 @@ function UseCasePortfolioAppInner() {
         <AnimatePresence mode="wait">
           {view === 'table' ? (
             <motion.div key="table" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }}>
-              <Card className="overflow-hidden rounded-[28px]">
+              <Card className="overflow-hidden">
                 <div className="overflow-x-auto">
                   <table className="min-w-full text-left">
-                    <thead className="bg-slate-50 text-sm text-slate-500">
+                    <thead className="border-b border-hairline-soft">
                       <tr>
                         {isEditor && (
-                          <th className="w-10 px-4 py-4">
+                          <th className="w-10 px-4 py-3.5">
                             <button type="button" onClick={toggleSelectAllVisible} aria-label={allVisibleSelected ? 'Deselect all visible' : 'Select all visible'}>
-                              {allVisibleSelected ? <CheckSquare className="h-4 w-4 text-slate-700" /> : <Square className="h-4 w-4 text-slate-300" />}
+                              {allVisibleSelected ? <CheckSquare className="h-4 w-4 text-ink" /> : <Square className="h-4 w-4 text-ink-tertiary" />}
                             </button>
                           </th>
                         )}
@@ -1493,7 +1516,7 @@ function UseCasePortfolioAppInner() {
                         <SortHeader label="Horizon" sortKey="horizon" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
                         <SortHeader label="End Date" sortKey="end_date" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
                         <SortHeader label="Updated" sortKey="updated" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
-                        <th className="px-6 py-4 font-medium text-right">Actions</th>
+                        <th className="px-6 py-3.5 text-xs font-semibold uppercase tracking-wide text-ink-tertiary text-right">Actions</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1503,43 +1526,43 @@ function UseCasePortfolioAppInner() {
                         return (
                           <tr
                             key={item.id}
-                            className={cn('cursor-pointer border-t border-slate-100 transition-colors hover:bg-slate-50/70', selected && 'bg-slate-50')}
+                            className={cn('cursor-pointer border-t border-hairline-soft transition-colors hover:bg-[#FAFAFA]', selected && 'bg-[#F2F7F9]')}
                             onClick={() => setActiveItem(item)}
                           >
                             {isEditor && (
                               <td className="px-4 py-4" onClick={(e) => e.stopPropagation()}>
                                 <button type="button" onClick={() => toggleSelect(item.id)} aria-label={selected ? 'Deselect' : 'Select'}>
-                                  {selected ? <CheckSquare className="h-4 w-4 text-slate-900" /> : <Square className="h-4 w-4 text-slate-300" />}
+                                  {selected ? <CheckSquare className="h-4 w-4 text-ink" /> : <Square className="h-4 w-4 text-ink-tertiary" />}
                                 </button>
                               </td>
                             )}
                             <td className="px-6 py-4">
-                              <div className="group text-left">
-                                <div className="font-medium text-slate-900 group-hover:text-slate-700">{item.name}</div>
-                                <div className="mt-1 text-xs text-slate-500">{item.id}</div>
+                              <div className="text-left">
+                                <div className="font-semibold text-ink">{item.name}</div>
+                                <div className="mt-0.5 text-xs text-ink-tertiary">{item.id}</div>
                               </div>
                             </td>
-                            <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-700">{item.department}</td>
-                            <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-700">{item.stakeholder}</td>
+                            <td className="whitespace-nowrap px-6 py-4 text-sm text-ink-secondary">{item.department}</td>
+                            <td className="whitespace-nowrap px-6 py-4 text-sm text-ink-secondary">{item.stakeholder}</td>
                             <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
-                              <InlineSelectBadge value={item.status} options={statusOptions} styles={statusStyles} isEditor={isEditor} ariaLabel="status" onChange={(v) => void applyFieldChange(item, 'status', v)} />
+                              <StatusIndicator value={item.status} isEditor={isEditor} onChange={(v) => void applyFieldChange(item, 'status', v)} />
                             </td>
                             <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
-                              <InlineSelectBadge value={item.priority} options={priorityOptions} styles={priorityStyles} isEditor={isEditor} ariaLabel="priority" onChange={(v) => void applyFieldChange(item, 'priority', v)} />
+                              <PriorityIndicator value={item.priority} isEditor={isEditor} onChange={(v) => void applyFieldChange(item, 'priority', v)} />
                             </td>
-                            {isEditor && <td className="whitespace-nowrap px-6 py-4 text-sm font-semibold text-emerald-600">{signs}</td>}
-                            {isEditor && <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-700">{item.score ? `${item.score}/100` : '—'}</td>}
-                            <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-700">{item.horizon}</td>
-                            <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-500">{item.end_date || '—'}</td>
-                            <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-500">{formatUpdated(item.updated)}</td>
+                            {isEditor && <td className="whitespace-nowrap px-6 py-4 text-sm font-semibold" style={{ color: 'var(--color-live)' }}>{signs}</td>}
+                            {isEditor && <td className="whitespace-nowrap px-6 py-4 text-sm text-ink-secondary">{item.score ? `${item.score}/100` : '—'}</td>}
+                            <td className="whitespace-nowrap px-6 py-4 text-sm text-ink-secondary">{item.horizon}</td>
+                            <td className="whitespace-nowrap px-6 py-4 text-sm text-ink-tertiary">{item.end_date || '—'}</td>
+                            <td className="whitespace-nowrap px-6 py-4 text-sm text-ink-tertiary">{formatUpdated(item.updated)}</td>
                             <td className="px-6 py-4 text-right" onClick={(e) => e.stopPropagation()}>
                               <div className="flex justify-end gap-2">
                                 <Button variant="outline" onClick={() => setActiveItem(item)} type="button">View</Button>
                                 {isEditor && (
                                   <>
-                                    <Button variant="ghost" onClick={() => { setEditingItem(item); setFormOpen(true); }} type="button"><Pencil className="h-4 w-4" /></Button>
-                                    <Button variant="ghost" onClick={() => void deleteItem(item.id)} type="button" aria-label="Delete use case">
-                                      <Trash2 className="h-4 w-4 text-rose-500" />
+                                    <Button variant="ghost" size="icon" onClick={() => { setEditingItem(item); setFormOpen(true); }} type="button" aria-label="Edit use case"><Pencil className="h-4 w-4" /></Button>
+                                    <Button variant="ghost" size="icon" onClick={() => void deleteItem(item.id)} type="button" aria-label="Delete use case">
+                                      <Trash2 className="h-4 w-4 text-[#C4384A]" />
                                     </Button>
                                   </>
                                 )}
@@ -1551,8 +1574,8 @@ function UseCasePortfolioAppInner() {
                     </tbody>
                   </table>
                 </div>
-                {loading && <div className="p-8 text-center text-slate-500">Loading data...</div>}
-                {!loading && filtered.length === 0 && <div className="p-12 text-center text-slate-500">No use cases match the current filters.</div>}
+                {loading && <div className="p-8 text-center text-ink-tertiary">Loading data...</div>}
+                {!loading && filtered.length === 0 && <div className="p-12 text-center text-ink-tertiary">No use cases match the current filters.</div>}
               </Card>
             </motion.div>
           ) : (
@@ -1561,15 +1584,15 @@ function UseCasePortfolioAppInner() {
                 const signs = getValueSigns(item.value_amount);
                 const selected = selectedIds.has(item.id);
                 return (
-                  <Card key={item.id} className={cn('relative flex h-full flex-col rounded-[28px] transition-transform hover:-translate-y-1', selected && 'ring-2 ring-slate-900')}>
+                  <Card key={item.id} className={cn('relative flex h-full flex-col transition-shadow hover:shadow-sm', selected && 'ring-2 ring-accent')}>
                     {isEditor && (
                       <button
                         type="button"
                         onClick={(e) => { e.stopPropagation(); toggleSelect(item.id); }}
-                        className="absolute left-4 top-4 z-10 rounded-md bg-white/95 p-0.5 shadow-sm"
+                        className="absolute left-4 top-4 z-10 rounded-md bg-white/95 p-0.5"
                         aria-label={selected ? 'Deselect' : 'Select'}
                       >
-                        {selected ? <CheckSquare className="h-4 w-4 text-slate-900" /> : <Square className="h-4 w-4 text-slate-400" />}
+                        {selected ? <CheckSquare className="h-4 w-4 text-ink" /> : <Square className="h-4 w-4 text-ink-tertiary" />}
                       </button>
                     )}
                     <CardHeader className={cn('pb-3', isEditor && 'pl-12')}>
@@ -1578,29 +1601,29 @@ function UseCasePortfolioAppInner() {
                           <CardTitle className="leading-6">{item.name}</CardTitle>
                           <CardDescription className="mt-1">{item.id}</CardDescription>
                         </div>
-                        <ChevronRight className="h-5 w-5 text-slate-400" />
+                        <ChevronRight className="h-5 w-5 text-ink-tertiary" />
                       </div>
                     </CardHeader>
                     <CardContent className="flex flex-1 flex-col space-y-4 pt-0">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <InlineSelectBadge value={item.status} options={statusOptions} styles={statusStyles} isEditor={isEditor} ariaLabel="status" onChange={(v) => void applyFieldChange(item, 'status', v)} />
-                        <InlineSelectBadge value={item.priority} options={priorityOptions} styles={priorityStyles} isEditor={isEditor} ariaLabel="priority" onChange={(v) => void applyFieldChange(item, 'priority', v)} />
-                        {isEditor && signs && <Badge className="border border-emerald-200 bg-emerald-50 text-emerald-700">{signs}</Badge>}
-                        {isEditor && item.score && <Badge className="border border-slate-200 bg-slate-50 text-slate-700">{item.score}/100</Badge>}
+                      <div className="flex flex-wrap items-center gap-4">
+                        <StatusIndicator value={item.status} isEditor={isEditor} onChange={(v) => void applyFieldChange(item, 'status', v)} />
+                        <PriorityIndicator value={item.priority} isEditor={isEditor} onChange={(v) => void applyFieldChange(item, 'priority', v)} />
+                        {isEditor && signs && <span className="text-sm font-semibold" style={{ color: 'var(--color-live)' }}>{signs}</span>}
+                        {isEditor && item.score && <span className="text-sm text-ink-secondary">{item.score}/100</span>}
                       </div>
                       {item.description && <ClampedText text={item.description} />}
-                      <div className="grid gap-3 text-sm text-slate-600">
-                        <div className="flex items-center gap-2"><Building2 className="h-4 w-4" /> {item.department}</div>
-                        <div className="flex items-center gap-2"><User2 className="h-4 w-4" /> {item.stakeholder}</div>
-                        <div className="flex items-center gap-2"><CalendarDays className="h-4 w-4" /> {item.horizon}</div>
+                      <div className="grid gap-3 text-sm text-ink-secondary">
+                        <div className="flex items-center gap-2"><Building2 className="h-4 w-4 text-ink-tertiary" /> {item.department}</div>
+                        <div className="flex items-center gap-2"><User2 className="h-4 w-4 text-ink-tertiary" /> {item.stakeholder}</div>
+                        <div className="flex items-center gap-2"><CalendarDays className="h-4 w-4 text-ink-tertiary" /> {item.horizon}</div>
                       </div>
                       <div className="mt-auto flex gap-2 pt-2">
                         <Button className="flex-1" onClick={() => setActiveItem(item)} type="button">Open details</Button>
                         {isEditor && (
                           <>
-                            <Button variant="outline" onClick={() => { setEditingItem(item); setFormOpen(true); }} type="button"><Pencil className="h-4 w-4" /></Button>
-                            <Button variant="outline" onClick={() => void deleteItem(item.id)} type="button" aria-label="Delete use case">
-                              <Trash2 className="h-4 w-4 text-rose-500" />
+                            <Button variant="outline" size="icon" onClick={() => { setEditingItem(item); setFormOpen(true); }} type="button" aria-label="Edit use case"><Pencil className="h-4 w-4" /></Button>
+                            <Button variant="outline" size="icon" onClick={() => void deleteItem(item.id)} type="button" aria-label="Delete use case">
+                              <Trash2 className="h-4 w-4 text-[#C4384A]" />
                             </Button>
                           </>
                         )}
@@ -1637,119 +1660,107 @@ function UseCasePortfolioAppInner() {
         <Drawer open={Boolean(activeItem)} onClose={() => setActiveItem(null)}>
           {activeItem && (
             <>
-              <div className="bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 p-6 text-white">
+              <div className="border-b border-hairline p-6">
                 <div className="mb-4 flex items-start justify-between gap-4">
                   <div>
-                    <div className="text-sm text-slate-300">{activeItem.id}</div>
-                    <h2 className="mt-1 text-2xl font-semibold text-white">{activeItem.name}</h2>
-                    <p className="mt-1 text-sm text-slate-300">Detailed portfolio view for planning, review, and execution.</p>
+                    <div className="text-xs font-semibold uppercase tracking-wide text-ink-tertiary">{activeItem.id}</div>
+                    <h2 className="mt-1 text-3xl font-bold tracking-tight text-ink">{activeItem.name}</h2>
                   </div>
-                  <Button size="icon" variant="secondary" onClick={() => setActiveItem(null)} type="button"><X className="h-4 w-4" /></Button>
+                  <Button size="icon" variant="ghost" onClick={() => setActiveItem(null)} type="button"><X className="h-4 w-4" /></Button>
                 </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <InlineSelectBadge value={activeItem.status} options={statusOptions} styles={statusStyles} isEditor={isEditor} ariaLabel="status" onChange={(v) => { void applyFieldChange(activeItem, 'status', v); setActiveItem((cur) => (cur ? { ...cur, status: v } : cur)); }} />
-                  <InlineSelectBadge value={activeItem.priority} options={priorityOptions} styles={priorityStyles} isEditor={isEditor} ariaLabel="priority" onChange={(v) => { void applyFieldChange(activeItem, 'priority', v); setActiveItem((cur) => (cur ? { ...cur, priority: v } : cur)); }} />
-                  <Badge className="border border-white/20 bg-white/10 text-white">{activeItem.horizon}</Badge>
+                <div className="flex flex-wrap items-center gap-4">
+                  <StatusIndicator value={activeItem.status} isEditor={isEditor} onChange={(v) => { void applyFieldChange(activeItem, 'status', v); setActiveItem((cur) => (cur ? { ...cur, status: v } : cur)); }} />
+                  <PriorityIndicator value={activeItem.priority} isEditor={isEditor} onChange={(v) => { void applyFieldChange(activeItem, 'priority', v); setActiveItem((cur) => (cur ? { ...cur, priority: v } : cur)); }} />
+                  <span className="text-sm text-ink-secondary">{activeItem.horizon}</span>
                   {isEditor && getValueSigns(activeItem.value_amount) && (
-                    <Badge className="border border-emerald-400/30 bg-emerald-400/20 text-emerald-300">{getValueSigns(activeItem.value_amount)}</Badge>
+                    <span className="text-sm font-semibold" style={{ color: 'var(--color-live)' }}>{getValueSigns(activeItem.value_amount)}</span>
                   )}
                   {isEditor && activeItem.score && (
-                    <Badge className="border border-white/20 bg-white/10 text-white">Score: {activeItem.score}/100</Badge>
+                    <span className="text-sm text-ink-secondary">Score: {activeItem.score}/100</span>
                   )}
                 </div>
               </div>
-              <div className="space-y-4 p-6">
-                <div className="grid gap-4 md:grid-cols-2">
-                  <Card className="border border-slate-200 shadow-none">
-                    <CardContent className="p-5">
-                      <p className="text-sm text-slate-500">Department</p>
-                      <p className="mt-2 text-base font-medium text-slate-900">{activeItem.department}</p>
-                    </CardContent>
-                  </Card>
-                  <Card className="border border-slate-200 shadow-none">
-                    <CardContent className="p-5">
-                      <p className="text-sm text-slate-500">Primary stakeholder</p>
-                      <p className="mt-2 text-base font-medium text-slate-900">{activeItem.stakeholder}</p>
-                    </CardContent>
-                  </Card>
+              <div className="space-y-6 p-6">
+                <div className="overflow-hidden rounded-2xl border border-hairline">
+                  <div className="flex items-center justify-between border-b border-hairline-soft px-5 py-3.5">
+                    <span className="text-sm text-ink-secondary">Department</span>
+                    <span className="text-sm font-medium text-ink">{activeItem.department}</span>
+                  </div>
+                  <div className="flex items-center justify-between border-b border-hairline-soft px-5 py-3.5">
+                    <span className="text-sm text-ink-secondary">Primary stakeholder</span>
+                    <span className="text-sm font-medium text-ink">{activeItem.stakeholder}</span>
+                  </div>
                   {activeItem.start_date && (
-                    <Card className="border border-slate-200 shadow-none">
-                      <CardContent className="p-5">
-                        <p className="text-sm text-slate-500">Start date</p>
-                        <p className="mt-2 text-base font-medium text-slate-900">{activeItem.start_date}</p>
-                      </CardContent>
-                    </Card>
+                    <div className="flex items-center justify-between border-b border-hairline-soft px-5 py-3.5">
+                      <span className="text-sm text-ink-secondary">Start date</span>
+                      <span className="text-sm font-medium text-ink">{activeItem.start_date}</span>
+                    </div>
                   )}
                   {activeItem.end_date && (
-                    <Card className="border border-slate-200 shadow-none">
-                      <CardContent className="p-5">
-                        <p className="text-sm text-slate-500">End date</p>
-                        <p className="mt-2 text-base font-medium text-slate-900">{activeItem.end_date}</p>
-                      </CardContent>
-                    </Card>
+                    <div className="flex items-center justify-between px-5 py-3.5">
+                      <span className="text-sm text-ink-secondary">End date</span>
+                      <span className="text-sm font-medium text-ink">{activeItem.end_date}</span>
+                    </div>
                   )}
                   {isEditor && activeItem.value_amount && (
-                    <Card className="border border-slate-200 shadow-none md:col-span-2">
-                      <CardContent className="p-5">
-                        <p className="text-sm text-slate-500">Estimated value</p>
-                        <p className="mt-2 text-base font-medium text-slate-900">
-                          ${Number(activeItem.value_amount).toLocaleString()} <span className="text-emerald-600 ml-1">{getValueSigns(activeItem.value_amount)}</span>
-                        </p>
-                      </CardContent>
-                    </Card>
+                    <div className="flex items-center justify-between border-t border-hairline-soft px-5 py-3.5">
+                      <span className="text-sm text-ink-secondary">Estimated value</span>
+                      <span className="text-sm font-medium text-ink">
+                        ${Number(activeItem.value_amount).toLocaleString()} <span className="ml-1" style={{ color: 'var(--color-live)' }}>{getValueSigns(activeItem.value_amount)}</span>
+                      </span>
+                    </div>
                   )}
                 </div>
 
-                {activeItem.description && (
-                  <Card className="border border-slate-200 shadow-none">
-                    <CardContent className="p-5">
-                      <p className="text-sm font-semibold text-slate-900 mb-2">Description</p>
-                      <p className="leading-7 text-slate-700">{activeItem.description}</p>
-                    </CardContent>
-                  </Card>
-                )}
-
-                {activeItem.impact && (
-                  <Card className="border border-slate-200 shadow-none">
-                    <CardContent className="p-5">
-                      <p className="text-sm font-semibold text-slate-900 mb-2">Expected impact</p>
-                      <p className="leading-7 text-slate-700">{activeItem.impact}</p>
-                    </CardContent>
-                  </Card>
-                )}
-
-                {activeItem.notes && (
-                  <Card className="border border-slate-200 shadow-none">
-                    <CardContent className="p-5">
-                      <p className="text-sm font-semibold text-slate-900 mb-2">Notes and execution context</p>
-                      <p className="leading-7 text-slate-700">{activeItem.notes}</p>
-                    </CardContent>
-                  </Card>
+                {(activeItem.description || activeItem.impact || activeItem.notes) && (
+                  <div className="overflow-hidden rounded-2xl border border-hairline">
+                    {activeItem.description && (
+                      <div className="border-b border-hairline-soft px-5 py-5">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-ink-tertiary mb-2">Description</p>
+                        <p className="text-[15px] leading-7 text-ink-secondary">{activeItem.description}</p>
+                      </div>
+                    )}
+                    {activeItem.impact && (
+                      <div className="border-b border-hairline-soft px-5 py-5">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-ink-tertiary mb-2">Expected impact</p>
+                        <p className="text-[15px] leading-7 text-ink-secondary">{activeItem.impact}</p>
+                      </div>
+                    )}
+                    {activeItem.notes && (
+                      <div className="px-5 py-5">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-ink-tertiary mb-2">Notes and execution context</p>
+                        <p className="text-[15px] leading-7 text-ink-secondary">{activeItem.notes}</p>
+                      </div>
+                    )}
+                  </div>
                 )}
 
                 {activeItem.brd_url && (
-                  <Card className="border border-slate-200 shadow-none">
-                    <CardContent className="p-5">
-                      <p className="text-sm font-semibold text-slate-900 mb-3">BRD Document</p>
-                      <a href={activeItem.brd_url} target="_blank" rel="noopener noreferrer">
-                        <Button variant="outline" type="button"><FileText className="h-4 w-4" /> View BRD</Button>
-                      </a>
-                    </CardContent>
-                  </Card>
+                  <div className="rounded-2xl border border-hairline px-5 py-5">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-ink-tertiary mb-3">BRD Document</p>
+                    <a href={activeItem.brd_url} target="_blank" rel="noopener noreferrer">
+                      <Button variant="outline" type="button"><FileText className="h-4 w-4" /> View BRD</Button>
+                    </a>
+                  </div>
                 )}
 
                 {isEditor && (
-                  <div className="flex gap-3 pt-2">
+                  <div className="flex items-center gap-3 pt-2">
                     <Button disabled={saving} onClick={() => { setEditingItem(activeItem); setFormOpen(true); setActiveItem(null); }} type="button">
                       <Pencil className="h-4 w-4" /> Edit use case
                     </Button>
-                  <Button variant="outline" onClick={() => setAiOpen(true)} type="button">
-  <Bot className="h-4 w-4" /> AI Assistant
-</Button>
-<Button variant="outline" disabled={saving} onClick={() => void deleteItem(activeItem.id)} type="button">
-  <Trash2 className="h-4 w-4 text-rose-500" /> Delete
-</Button>
-</div>
+                    <Button variant="outline" onClick={() => setAiOpen(true)} type="button">
+                      <Bot className="h-4 w-4" /> AI Assistant
+                    </Button>
+                    <button
+                      type="button"
+                      disabled={saving}
+                      onClick={() => void deleteItem(activeItem.id)}
+                      className="ml-auto text-sm font-medium text-[#C4384A] transition hover:opacity-70 disabled:opacity-50"
+                    >
+                      Delete
+                    </button>
+                  </div>
                 )}
               </div>
             </>
