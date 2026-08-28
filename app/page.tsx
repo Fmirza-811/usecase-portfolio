@@ -377,7 +377,7 @@ function StatusIndicator({ value, isEditor, onChange }: {
   }
 
   const content = (
-    <span className="inline-flex items-center gap-2 text-sm text-ink">
+    <span className="inline-flex items-center gap-2 whitespace-nowrap text-sm text-ink">
       <span className="h-[7px] w-[7px] shrink-0 rounded-full" style={{ background: dot }} />
       {value}
     </span>
