@@ -643,8 +643,10 @@ function BulkActionBar({ count, onSetStatus, onSetPriority, onDelete, onClear, b
 }
 
 // ── Gantt Chart ───────────────────────────────────────────────────────────────
+const LIVE_ENHANCEMENT_COLOR = 'rgba(34,165,92,0.32)';
+
 function GanttChart({ items }: { items: UseCaseItem[] }) {
-  const [tooltip, setTooltip] = useState<{ x: number; y: number; item: UseCaseItem } | null>(null);
+  const [tooltip, setTooltip] = useState<{ x: number; y: number; item: UseCaseItem; note?: string } | null>(null);
   const validItems = items.filter((i) => {
   if (!i.start_date || !i.end_date) return false;
   const s = new Date(i.start_date.trim());
@@ -654,7 +656,9 @@ function GanttChart({ items }: { items: UseCaseItem[] }) {
   if (validItems.length === 0) return (
     <Card><CardContent className="p-8 text-center text-ink-tertiary">No timeline data available.</CardContent></Card>
   );
-  const allDates = validItems.flatMap((i) => [new Date(i.start_date), new Date(i.end_date)]);
+  const today = new Date();
+  // Today is always included in the range so a Live item's ongoing-enhancement segment has room to render.
+  const allDates = validItems.flatMap((i) => [new Date(i.start_date), new Date(i.end_date)]).concat([today]);
   const minDate = new Date(Math.min(...allDates.map((d) => d.getTime())));
   const maxDate = new Date(Math.max(...allDates.map((d) => d.getTime())));
   minDate.setDate(1); maxDate.setMonth(maxDate.getMonth() + 1); maxDate.setDate(0);
@@ -669,7 +673,6 @@ function GanttChart({ items }: { items: UseCaseItem[] }) {
     months.push({ label: cursor.toLocaleDateString('en-GB', { month: 'short', year: '2-digit' }), left, width: end - left });
     cursor.setMonth(cursor.getMonth() + 1);
   }
-  const today = new Date();
   const todayPct = Math.min(100, Math.max(0, (today.getTime() - minDate.getTime()) / (1000 * 60 * 60 * 24) / totalDays * 100));
   const showToday = today >= minDate && today <= maxDate;
   return (
@@ -678,7 +681,7 @@ function GanttChart({ items }: { items: UseCaseItem[] }) {
         <div className="fixed z-50 pointer-events-none" style={{ left: tooltip.x + 12, top: tooltip.y - 60 }}>
           <div className="rounded-2xl bg-ink shadow-2xl px-4 py-3 text-xs">
             <p className="font-semibold text-white text-sm">{tooltip.item.status}</p>
-            <p className="text-white/60 mt-1">{tooltip.item.start_date} → {tooltip.item.end_date}</p>
+            <p className="text-white/60 mt-1">{tooltip.note ?? `${tooltip.item.start_date} → ${tooltip.item.end_date}`}</p>
           </div>
         </div>
       )}
@@ -701,32 +704,64 @@ function GanttChart({ items }: { items: UseCaseItem[] }) {
                 )}
                 {validItems.map((item) => {
                   const start = new Date(item.start_date.trim());
-const end = new Date(item.end_date.trim());
+                  const end = new Date(item.end_date.trim());
                   const leftPct = (start.getTime() - minDate.getTime()) / (1000 * 60 * 60 * 24) / totalDays * 100;
                   const widthPct = (end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24) / totalDays * 100;
                   const barColor = statusDotColors[item.status] ?? '#A1A1A6';
+                  const clampedLeft = Math.max(0, leftPct);
+                  const clampedWidth = Math.min(100 - clampedLeft, widthPct);
+                  const milestoneLeft = clampedLeft + clampedWidth;
+
+                  // Live items keep working post-launch: mark the go-live date with a diamond
+                  // and extend a lighter, full-height segment through to today for ongoing enhancements.
+                  const isLive = item.status === 'Live';
+                  const enhWidthPct = isLive ? Math.max(0, Math.min(100 - milestoneLeft, todayPct - milestoneLeft)) : 0;
+                  const showEnhancement = isLive && enhWidthPct > 0.5;
+
                   return (
                     <div key={item.id} className="flex items-center gap-0">
                       <div className="absolute -ml-48 w-44 truncate pr-3 text-right text-sm text-ink-secondary" title={item.name}>{item.name}</div>
                       <div className="relative h-8 w-full rounded-xl bg-canvas">
                         <div
                           className="absolute h-full rounded-xl opacity-90 transition-all cursor-pointer"
-                          style={{ left: `${Math.max(0, leftPct)}%`, width: `${Math.min(100 - Math.max(0, leftPct), widthPct)}%`, background: barColor }}
+                          style={{ left: `${clampedLeft}%`, width: `${clampedWidth}%`, background: barColor }}
                           onMouseEnter={(e) => setTooltip({ x: e.clientX, y: e.clientY, item })}
                           onMouseMove={(e) => setTooltip({ x: e.clientX, y: e.clientY, item })}
                           onMouseLeave={() => setTooltip(null)}
                         />
+                        {showEnhancement && (
+                          <div
+                            className="absolute h-full rounded-xl transition-all cursor-pointer"
+                            style={{ left: `${milestoneLeft}%`, width: `${enhWidthPct}%`, background: LIVE_ENHANCEMENT_COLOR }}
+                            onMouseEnter={(e) => setTooltip({ x: e.clientX, y: e.clientY, item, note: `Ongoing enhancements since ${item.end_date}` })}
+                            onMouseMove={(e) => setTooltip({ x: e.clientX, y: e.clientY, item, note: `Ongoing enhancements since ${item.end_date}` })}
+                            onMouseLeave={() => setTooltip(null)}
+                          />
+                        )}
+                        {isLive && (
+                          <div
+                            className="absolute top-1/2 z-10 h-3 w-3 -translate-y-1/2 rounded-[3px] shadow-[0_0_0_2px_var(--color-canvas)]"
+                            style={{ left: `${milestoneLeft}%`, transform: 'translate(-50%, -50%) rotate(45deg)', background: '#118BA1' }}
+                            title={`Live since ${item.end_date}`}
+                          />
+                        )}
                       </div>
                     </div>
                   );
                 })}
               </div>
-              <div className="mt-6 flex flex-wrap gap-3">
+              <div className="mt-6 flex flex-wrap items-center gap-3">
                 {Object.entries(statusDotColors).map(([status, color]) => (
                   <div key={status} className="flex items-center gap-1.5 text-xs text-ink-secondary">
                     <div className="h-2.5 w-2.5 rounded-full" style={{ background: color }} />{status}
                   </div>
                 ))}
+                <div className="flex items-center gap-1.5 text-xs text-ink-secondary">
+                  <div className="h-2.5 w-2.5 rounded-[2px]" style={{ background: '#118BA1', transform: 'rotate(45deg)' }} />Went live
+                </div>
+                <div className="flex items-center gap-1.5 text-xs text-ink-secondary">
+                  <div className="h-2.5 w-2.5 rounded-full" style={{ background: LIVE_ENHANCEMENT_COLOR }} />Ongoing enhancements
+                </div>
               </div>
             </div>
           </div>
