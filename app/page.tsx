@@ -32,6 +32,7 @@ type UseCaseItem = {
   updated: string;
   start_date: string;
   end_date: string;
+  live_date: string;
   value_amount: string;
   brd_url: string;
   score: string;
@@ -78,7 +79,7 @@ const demoUseCases: UseCaseItem[] = [
     description: 'Automates first-draft RFP responses using approved content blocks, reusable answer libraries, and guided prompt workflows.',
     impact: 'Reduce proposal preparation time and improve consistency in responses.',
     notes: 'Needs stronger export and library management workflow.',
-    updated: '2026-04-09', start_date: '2026-03-01', end_date: '2026-06-30',
+    updated: '2026-04-09', start_date: '2026-03-01', end_date: '2026-06-30', live_date: '',
     value_amount: '150000', brd_url: '', score: '',
   },
   {
@@ -87,7 +88,7 @@ const demoUseCases: UseCaseItem[] = [
     description: 'Client-facing helpbot for Transcend Finance users to answer system questions and reduce repetitive support traffic.',
     impact: 'Lower support volume and improve self-service for clients.',
     notes: 'Need to define scope boundaries and escalation logic.',
-    updated: '2026-04-08', start_date: '2026-04-01', end_date: '2026-07-31',
+    updated: '2026-04-08', start_date: '2026-04-01', end_date: '2026-07-31', live_date: '',
     value_amount: '80000', brd_url: '', score: '',
   },
   {
@@ -96,7 +97,7 @@ const demoUseCases: UseCaseItem[] = [
     description: 'Executive dashboard layer for wholesale finance with natural-language insight generation and strategic KPI summaries.',
     impact: 'Help executives answer business questions quickly without depending on analysts.',
     notes: 'Best positioned as a strategic differentiator.',
-    updated: '2026-04-06', start_date: '2026-07-01', end_date: '2026-12-31',
+    updated: '2026-04-06', start_date: '2026-07-01', end_date: '2026-12-31', live_date: '',
     value_amount: '1200000', brd_url: '', score: '',
   },
   {
@@ -105,7 +106,7 @@ const demoUseCases: UseCaseItem[] = [
     description: 'Recommends relevant finance products, contract types, and add-ons to improve dealer-side sales conversations.',
     impact: 'Drive smarter assisted selling with limited first-interaction customer data.',
     notes: 'Should stay recommendation-first, not advisory-heavy.',
-    updated: '2026-04-04', start_date: '2026-09-01', end_date: '2027-03-31',
+    updated: '2026-04-04', start_date: '2026-09-01', end_date: '2027-03-31', live_date: '',
     value_amount: '50000', brd_url: '', score: '',
   },
 ];
@@ -308,7 +309,7 @@ function CardDescription({ className, children }: SurfaceProps) { return <p clas
 function CardContent({ className, children }: SurfaceProps) { return <div className={cn('p-6', className)}>{children}</div>; }
 
 type ButtonVariant = 'default' | 'outline' | 'ghost' | 'secondary' | 'danger';
-type ButtonSize = 'default' | 'icon';
+type ButtonSize = 'default' | 'icon' | 'sm' | 'icon-sm';
 type ButtonProps = { className?: string; variant?: ButtonVariant; size?: ButtonSize; children: ReactNode } & ButtonHTMLAttributes<HTMLButtonElement>;
 
 function Button({ className, variant = 'default', size = 'default', children, ...props }: ButtonProps) {
@@ -319,7 +320,7 @@ function Button({ className, variant = 'default', size = 'default', children, ..
     secondary: 'bg-black/[0.05] text-ink hover:bg-black/[0.08]',
     danger: 'bg-[#C4384A] text-white hover:opacity-90',
   };
-  const sizes: Record<ButtonSize, string> = { default: 'h-10 px-4 py-2', icon: 'h-10 w-10 p-0' };
+  const sizes: Record<ButtonSize, string> = { default: 'h-10 px-4 py-2', icon: 'h-10 w-10 p-0', sm: 'h-8 px-3 text-xs', 'icon-sm': 'h-8 w-8 p-0' };
   return (
     <button className={cn('inline-flex items-center justify-center gap-2 rounded-full text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-50', variants[variant], sizes[size], className)} {...props}>
       {children}
@@ -445,7 +446,7 @@ function SortHeader({ label, sortKey, activeKey, dir, onSort, align }: {
 }) {
   const active = activeKey === sortKey;
   return (
-    <th className={cn('whitespace-nowrap px-6 py-3.5 text-xs font-semibold uppercase tracking-wide text-ink-tertiary', align === 'right' && 'text-right')}>
+    <th className={cn('whitespace-nowrap px-3 py-3 text-xs font-semibold uppercase tracking-wide text-ink-tertiary', align === 'right' && 'text-right')}>
       <button
         type="button"
         onClick={() => onSort(sortKey)}
@@ -710,13 +711,19 @@ function GanttChart({ items }: { items: UseCaseItem[] }) {
                   const barColor = statusDotColors[item.status] ?? '#A1A1A6';
                   const clampedLeft = Math.max(0, leftPct);
                   const clampedWidth = Math.min(100 - clampedLeft, widthPct);
-                  const milestoneLeft = clampedLeft + clampedWidth;
 
-                  // Live items keep working post-launch: mark the go-live date with a diamond
-                  // and extend a lighter, full-height segment through to today for ongoing enhancements.
+                  // Live items keep working post-launch: mark the go-live date (live_date, falling back
+                  // to end_date when unset) with a diamond, and extend a lighter, full-height segment
+                  // through to today for ongoing enhancements.
                   const isLive = item.status === 'Live';
-                  const enhWidthPct = isLive ? Math.max(0, Math.min(100 - milestoneLeft, todayPct - milestoneLeft)) : 0;
-                  const showEnhancement = isLive && enhWidthPct > 0.5;
+                  const liveDateRaw = (item.live_date && item.live_date.trim()) || item.end_date;
+                  const liveDateObj = new Date(liveDateRaw.trim());
+                  const hasValidLiveDate = !isNaN(liveDateObj.getTime());
+                  const milestoneLeft = isLive && hasValidLiveDate
+                    ? Math.max(0, Math.min(100, (liveDateObj.getTime() - minDate.getTime()) / (1000 * 60 * 60 * 24) / totalDays * 100))
+                    : clampedLeft + clampedWidth;
+                  const enhWidthPct = isLive && hasValidLiveDate ? Math.max(0, Math.min(100 - milestoneLeft, todayPct - milestoneLeft)) : 0;
+                  const showEnhancement = enhWidthPct > 0.5;
 
                   return (
                     <div key={item.id} className="flex items-center gap-0">
@@ -733,16 +740,16 @@ function GanttChart({ items }: { items: UseCaseItem[] }) {
                           <div
                             className="absolute h-full rounded-xl transition-all cursor-pointer"
                             style={{ left: `${milestoneLeft}%`, width: `${enhWidthPct}%`, background: LIVE_ENHANCEMENT_COLOR }}
-                            onMouseEnter={(e) => setTooltip({ x: e.clientX, y: e.clientY, item, note: `Ongoing enhancements since ${item.end_date}` })}
-                            onMouseMove={(e) => setTooltip({ x: e.clientX, y: e.clientY, item, note: `Ongoing enhancements since ${item.end_date}` })}
+                            onMouseEnter={(e) => setTooltip({ x: e.clientX, y: e.clientY, item, note: `Ongoing enhancements since ${liveDateRaw}` })}
+                            onMouseMove={(e) => setTooltip({ x: e.clientX, y: e.clientY, item, note: `Ongoing enhancements since ${liveDateRaw}` })}
                             onMouseLeave={() => setTooltip(null)}
                           />
                         )}
-                        {isLive && (
+                        {isLive && hasValidLiveDate && (
                           <div
                             className="absolute top-1/2 z-10 h-3 w-3 -translate-y-1/2 rounded-[3px] shadow-[0_0_0_2px_var(--color-canvas)]"
                             style={{ left: `${milestoneLeft}%`, transform: 'translate(-50%, -50%) rotate(45deg)', background: '#118BA1' }}
-                            title={`Live since ${item.end_date}`}
+                            title={`Live since ${liveDateRaw}`}
                           />
                         )}
                       </div>
@@ -982,7 +989,7 @@ const emptyForm: UseCaseItem = {
   status: 'Idea', horizon: 'Future Pipeline', priority: 'Medium',
   description: '', impact: '', notes: '',
   updated: new Date().toISOString().slice(0, 10),
-  start_date: '', end_date: '', value_amount: '', brd_url: '', score: '',
+  start_date: '', end_date: '', live_date: '', value_amount: '', brd_url: '', score: '',
 };
 
 function UseCaseForm({ open, onOpenChange, onSave, editingItem, modLabel }: {
@@ -1126,6 +1133,11 @@ function UseCaseForm({ open, onOpenChange, onSave, editingItem, modLabel }: {
         <div>
           <label className="mb-2 block text-sm font-medium text-ink-secondary">End Date</label>
           <Input type="date" value={form.end_date} onChange={(e) => update('end_date', e.target.value)} />
+        </div>
+        <div className="md:col-span-2">
+          <label className="mb-2 block text-sm font-medium text-ink-secondary">Went Live Date</label>
+          <Input type="date" value={form.live_date} onChange={(e) => update('live_date', e.target.value)} />
+          <p className="mt-1 text-xs text-ink-tertiary">Marks the go-live milestone on the Timeline once Status is set to Live. Leave blank to fall back to End Date.</p>
         </div>
         <div className="md:col-span-2">
           <label className="mb-2 block text-sm font-medium text-ink-secondary">Estimated Value (USD)</label>
@@ -1535,7 +1547,7 @@ function UseCasePortfolioAppInner() {
                     <thead className="border-b border-hairline-soft">
                       <tr>
                         {isEditor && (
-                          <th className="w-10 px-4 py-3.5">
+                          <th className="w-8 px-2 py-3">
                             <button type="button" onClick={toggleSelectAllVisible} aria-label={allVisibleSelected ? 'Deselect all visible' : 'Select all visible'}>
                               {allVisibleSelected ? <CheckSquare className="h-4 w-4 text-ink" /> : <Square className="h-4 w-4 text-ink-tertiary" />}
                             </button>
@@ -1551,7 +1563,7 @@ function UseCasePortfolioAppInner() {
                         <SortHeader label="Horizon" sortKey="horizon" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
                         <SortHeader label="End Date" sortKey="end_date" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
                         <SortHeader label="Updated" sortKey="updated" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
-                        <th className="px-6 py-3.5 text-xs font-semibold uppercase tracking-wide text-ink-tertiary text-right">Actions</th>
+                        <th className="px-3 py-3 text-xs font-semibold uppercase tracking-wide text-ink-tertiary text-right">Actions</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1565,39 +1577,39 @@ function UseCasePortfolioAppInner() {
                             onClick={() => setActiveItem(item)}
                           >
                             {isEditor && (
-                              <td className="px-4 py-4" onClick={(e) => e.stopPropagation()}>
+                              <td className="px-2 py-3" onClick={(e) => e.stopPropagation()}>
                                 <button type="button" onClick={() => toggleSelect(item.id)} aria-label={selected ? 'Deselect' : 'Select'}>
                                   {selected ? <CheckSquare className="h-4 w-4 text-ink" /> : <Square className="h-4 w-4 text-ink-tertiary" />}
                                 </button>
                               </td>
                             )}
-                            <td className="px-6 py-4">
+                            <td className="px-3 py-3">
                               <div className="text-left">
                                 <div className="font-semibold text-ink">{item.name}</div>
                                 <div className="mt-0.5 text-xs text-ink-tertiary">{item.id}</div>
                               </div>
                             </td>
-                            <td className="whitespace-nowrap px-6 py-4 text-sm text-ink-secondary">{item.department}</td>
-                            <td className="whitespace-nowrap px-6 py-4 text-sm text-ink-secondary">{item.stakeholder}</td>
-                            <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
+                            <td className="whitespace-nowrap px-3 py-3 text-sm text-ink-secondary">{item.department}</td>
+                            <td className="whitespace-nowrap px-3 py-3 text-sm text-ink-secondary">{item.stakeholder}</td>
+                            <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
                               <StatusIndicator value={item.status} isEditor={isEditor} onChange={(v) => void applyFieldChange(item, 'status', v)} />
                             </td>
-                            <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
+                            <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
                               <PriorityIndicator value={item.priority} isEditor={isEditor} onChange={(v) => void applyFieldChange(item, 'priority', v)} />
                             </td>
-                            {isEditor && <td className="whitespace-nowrap px-6 py-4 text-sm font-semibold" style={{ color: 'var(--color-live)' }}>{signs}</td>}
-                            {isEditor && <td className="whitespace-nowrap px-6 py-4 text-sm text-ink-secondary">{item.score ? `${item.score}/100` : '—'}</td>}
-                            <td className="whitespace-nowrap px-6 py-4 text-sm text-ink-secondary">{item.horizon}</td>
-                            <td className="whitespace-nowrap px-6 py-4 text-sm text-ink-tertiary">{item.end_date || '—'}</td>
-                            <td className="whitespace-nowrap px-6 py-4 text-sm text-ink-tertiary">{formatUpdated(item.updated)}</td>
-                            <td className="px-6 py-4 text-right" onClick={(e) => e.stopPropagation()}>
-                              <div className="flex justify-end gap-2">
-                                <Button variant="outline" onClick={() => setActiveItem(item)} type="button">View</Button>
+                            {isEditor && <td className="whitespace-nowrap px-3 py-3 text-sm font-semibold" style={{ color: 'var(--color-live)' }}>{signs}</td>}
+                            {isEditor && <td className="whitespace-nowrap px-3 py-3 text-sm text-ink-secondary">{item.score ? `${item.score}/100` : '—'}</td>}
+                            <td className="whitespace-nowrap px-3 py-3 text-sm text-ink-secondary">{item.horizon}</td>
+                            <td className="whitespace-nowrap px-3 py-3 text-sm text-ink-tertiary">{item.end_date || '—'}</td>
+                            <td className="whitespace-nowrap px-3 py-3 text-sm text-ink-tertiary">{formatUpdated(item.updated)}</td>
+                            <td className="px-3 py-3 text-right" onClick={(e) => e.stopPropagation()}>
+                              <div className="flex justify-end gap-1.5">
+                                <Button variant="outline" size="sm" onClick={() => setActiveItem(item)} type="button">View</Button>
                                 {isEditor && (
                                   <>
-                                    <Button variant="ghost" size="icon" onClick={() => { setEditingItem(item); setFormOpen(true); }} type="button" aria-label="Edit use case"><Pencil className="h-4 w-4" /></Button>
-                                    <Button variant="ghost" size="icon" onClick={() => void deleteItem(item.id)} type="button" aria-label="Delete use case">
-                                      <Trash2 className="h-4 w-4 text-[#C4384A]" />
+                                    <Button variant="ghost" size="icon-sm" onClick={() => { setEditingItem(item); setFormOpen(true); }} type="button" aria-label="Edit use case"><Pencil className="h-3.5 w-3.5" /></Button>
+                                    <Button variant="ghost" size="icon-sm" onClick={() => void deleteItem(item.id)} type="button" aria-label="Delete use case">
+                                      <Trash2 className="h-3.5 w-3.5 text-[#C4384A]" />
                                     </Button>
                                   </>
                                 )}
@@ -1732,9 +1744,15 @@ function UseCasePortfolioAppInner() {
                     </div>
                   )}
                   {activeItem.end_date && (
-                    <div className="flex items-center justify-between px-5 py-3.5">
+                    <div className={cn('flex items-center justify-between px-5 py-3.5', activeItem.status === 'Live' && activeItem.live_date && 'border-b border-hairline-soft')}>
                       <span className="text-sm text-ink-secondary">End date</span>
                       <span className="text-sm font-medium text-ink">{activeItem.end_date}</span>
+                    </div>
+                  )}
+                  {activeItem.status === 'Live' && activeItem.live_date && (
+                    <div className="flex items-center justify-between px-5 py-3.5">
+                      <span className="text-sm text-ink-secondary">Went live</span>
+                      <span className="text-sm font-medium" style={{ color: 'var(--color-live)' }}>{activeItem.live_date}</span>
                     </div>
                   )}
                   {isEditor && activeItem.value_amount && (

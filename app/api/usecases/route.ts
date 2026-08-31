@@ -1,9 +1,10 @@
 export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
-import { GoogleSpreadsheet } from 'google-spreadsheet';
+import { GoogleSpreadsheet, GoogleSpreadsheetWorksheet } from 'google-spreadsheet';
 import { JWT } from 'google-auth-library';
 import { google } from 'googleapis';
+import { Readable } from 'stream';
 
 const SPREADSHEET_ID = '1YAzLS4CJ2bF6L1WLcYRTofEmmYZD3LraRvDjnTEsyLg';
 const SCOPES = [
@@ -18,10 +19,22 @@ function getJWT() {
   return new JWT({ email: clientEmail, key: privateKey, scopes: SCOPES });
 }
 
+// Adds a column header to the sheet if it isn't already there, so new fields
+// (like live_date) work without requiring a manual spreadsheet edit first.
+async function ensureColumns(sheet: GoogleSpreadsheetWorksheet, columns: string[]) {
+  await sheet.loadHeaderRow();
+  const missing = columns.filter((c) => !sheet.headerValues.includes(c));
+  if (missing.length > 0) {
+    await sheet.setHeaderRow([...sheet.headerValues, ...missing]);
+  }
+}
+
 async function getSheet() {
   const doc = new GoogleSpreadsheet(SPREADSHEET_ID, getJWT());
   await doc.loadInfo();
-  return doc.sheetsByIndex[0];
+  const sheet = doc.sheetsByIndex[0];
+  await ensureColumns(sheet, ['live_date']);
+  return sheet;
 }
 
 export async function GET() {
@@ -42,6 +55,7 @@ export async function GET() {
       updated: row.get('updated'),
       start_date: row.get('start_date'),
       end_date: row.get('end_date'),
+      live_date: row.get('live_date'),
       value_amount: row.get('value_amount'),
       brd_url: row.get('brd_url'),
       score: row.get('score'),
@@ -60,7 +74,7 @@ export async function POST(req: NextRequest) {
     const rows = await sheet.getRows();
     const existing = rows.find((r) => r.get('id') === body.id);
 
-    const fields = ['name','department','stakeholder','status','horizon','priority','description','impact','notes','updated','start_date','end_date','value_amount','brd_url','score'];
+    const fields = ['name','department','stakeholder','status','horizon','priority','description','impact','notes','updated','start_date','end_date','live_date','value_amount','brd_url','score'];
 
     if (existing) {
       fields.forEach((f) => existing.set(f, body[f] ?? ''));
@@ -113,7 +127,7 @@ export async function PUT(req: NextRequest) {
       },
       media: {
         mimeType: file.type,
-        body: require('stream').Readable.from(buffer),
+        body: Readable.from(buffer),
       },
       fields: 'id, webViewLink',
     });
