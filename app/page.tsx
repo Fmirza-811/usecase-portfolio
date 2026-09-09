@@ -441,12 +441,12 @@ function PriorityIndicator({ value, isEditor, onChange }: {
   );
 }
 
-function SortHeader({ label, sortKey, activeKey, dir, onSort, align }: {
-  label: string; sortKey: SortableKey; activeKey: SortableKey | null; dir: 'asc' | 'desc'; onSort: (key: SortableKey) => void; align?: 'right';
+function SortHeader({ label, sortKey, activeKey, dir, onSort, align, className }: {
+  label: string; sortKey: SortableKey; activeKey: SortableKey | null; dir: 'asc' | 'desc'; onSort: (key: SortableKey) => void; align?: 'right'; className?: string;
 }) {
   const active = activeKey === sortKey;
   return (
-    <th className={cn('whitespace-nowrap px-3 py-3 text-xs font-semibold uppercase tracking-wide text-ink-tertiary', align === 'right' && 'text-right')}>
+    <th className={cn('whitespace-nowrap px-3 py-3 text-xs font-semibold uppercase tracking-wide text-ink-tertiary', align === 'right' && 'text-right', className)}>
       <button
         type="button"
         onClick={() => onSort(sortKey)}
@@ -1447,11 +1447,11 @@ function UseCasePortfolioAppInner() {
       <div className="mx-auto max-w-7xl space-y-6">
 
         <div className="space-y-6">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-3">
             <Image src="/transcend-logo.png" alt="Transcend AI Labs" width={381} height={134} priority className="h-7 w-auto" />
-            <div className="flex items-center gap-4">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-4">
               <AccessBadge role={userRole} />
-              <div className="h-4 w-px bg-hairline" />
+              <div className="hidden h-4 w-px bg-hairline sm:block" />
               <Button variant="outline" size="icon" onClick={() => void loadData()} disabled={loading} type="button" aria-label="Refresh">
                 <RefreshCw className={cn('h-4 w-4', loading && 'animate-spin')} />
               </Button>
@@ -1481,42 +1481,42 @@ function UseCasePortfolioAppInner() {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-hairline bg-hairline xl:grid-cols-4">
-          <div className="bg-white px-6 py-5">
-            <p className="text-[34px] font-bold leading-none tracking-tight text-ink">{stats.total}</p>
+        <div className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-hairline bg-hairline lg:grid-cols-4">
+          <div className="bg-white px-4 py-4 sm:px-6 sm:py-5">
+            <p className="text-2xl font-bold leading-none tracking-tight text-ink sm:text-[34px]">{stats.total}</p>
             <p className="mt-2 text-sm text-ink-secondary">Total initiatives</p>
           </div>
-          <div className="bg-white px-6 py-5">
-            <p className="text-[34px] font-bold leading-none tracking-tight" style={{ color: 'var(--color-live)' }}>{stats.liveOrProgress}</p>
+          <div className="bg-white px-4 py-4 sm:px-6 sm:py-5">
+            <p className="text-2xl font-bold leading-none tracking-tight sm:text-[34px]" style={{ color: 'var(--color-live)' }}>{stats.liveOrProgress}</p>
             <p className="mt-2 text-sm text-ink-secondary">Live or in progress</p>
           </div>
-          <div className="bg-white px-6 py-5">
-            <p className="text-[34px] font-bold leading-none tracking-tight text-accent">{stats.current}</p>
+          <div className="bg-white px-4 py-4 sm:px-6 sm:py-5">
+            <p className="text-2xl font-bold leading-none tracking-tight text-accent sm:text-[34px]">{stats.current}</p>
             <p className="mt-2 text-sm text-ink-secondary">Current quarter</p>
           </div>
-          <div className="bg-white px-6 py-5">
-            <p className="text-[34px] font-bold leading-none tracking-tight text-ink-tertiary">{stats.future}</p>
+          <div className="bg-white px-4 py-4 sm:px-6 sm:py-5">
+            <p className="text-2xl font-bold leading-none tracking-tight text-ink-tertiary sm:text-[34px]">{stats.future}</p>
             <p className="mt-2 text-sm text-ink-secondary">Future pipeline</p>
           </div>
         </div>
 
         <Card>
           <CardContent className="p-4 md:p-5">
-            <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-              <div className="flex flex-1 flex-col gap-3 md:flex-row">
-                <div className="relative flex-1 md:min-w-[280px]">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+              <div className="flex flex-1 flex-col gap-3 sm:flex-row">
+                <div className="relative flex-1 sm:min-w-[200px]">
                   <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-tertiary" />
                   <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search use cases, stakeholder, department..." className="h-11 pl-11" />
                 </div>
-                <Select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="h-11 w-full md:w-[170px]">
+                <Select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="h-11 w-full sm:w-[150px]">
                   <option value="All">All statuses</option>
                   {statusOptions.map((o) => <option key={o} value={o}>{o}</option>)}
                 </Select>
-                <Select value={deptFilter} onChange={(e) => setDeptFilter(e.target.value)} className="h-11 w-full md:w-[170px]">
+                <Select value={deptFilter} onChange={(e) => setDeptFilter(e.target.value)} className="h-11 w-full sm:w-[150px]">
                   {departments.map((d) => <option key={d} value={d}>{d === 'All' ? 'All departments' : d}</option>)}
                 </Select>
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center gap-3">
                 <div className="inline-flex rounded-full bg-black/[0.04] p-1">
                   <button className={cn('inline-flex items-center rounded-full px-3 py-2 text-sm', view === 'table' ? 'border border-hairline bg-white text-ink' : 'text-ink-secondary')} onClick={() => setView('table')} type="button">
                     <Table2 className="mr-2 h-4 w-4" /> Table
@@ -1554,15 +1554,15 @@ function UseCasePortfolioAppInner() {
                           </th>
                         )}
                         <SortHeader label="Use Case" sortKey="name" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
-                        <SortHeader label="Department" sortKey="department" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
-                        <SortHeader label="Stakeholder" sortKey="stakeholder" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
+                        <SortHeader label="Department" sortKey="department" activeKey={sortKey} dir={sortDir} onSort={toggleSort} className="hidden sm:table-cell" />
+                        <SortHeader label="Stakeholder" sortKey="stakeholder" activeKey={sortKey} dir={sortDir} onSort={toggleSort} className="hidden md:table-cell" />
                         <SortHeader label="Status" sortKey="status" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
-                        <SortHeader label="Priority" sortKey="priority" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
-                        {isEditor && <SortHeader label="Value" sortKey="value_amount" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />}
-                        {isEditor && <SortHeader label="Score" sortKey="score" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />}
-                        <SortHeader label="Horizon" sortKey="horizon" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
-                        <SortHeader label="End Date" sortKey="end_date" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
-                        <SortHeader label="Updated" sortKey="updated" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
+                        <SortHeader label="Priority" sortKey="priority" activeKey={sortKey} dir={sortDir} onSort={toggleSort} className="hidden sm:table-cell" />
+                        {isEditor && <SortHeader label="Value" sortKey="value_amount" activeKey={sortKey} dir={sortDir} onSort={toggleSort} className="hidden xl:table-cell" />}
+                        {isEditor && <SortHeader label="Score" sortKey="score" activeKey={sortKey} dir={sortDir} onSort={toggleSort} className="hidden xl:table-cell" />}
+                        <SortHeader label="Horizon" sortKey="horizon" activeKey={sortKey} dir={sortDir} onSort={toggleSort} className="hidden lg:table-cell" />
+                        <SortHeader label="End Date" sortKey="end_date" activeKey={sortKey} dir={sortDir} onSort={toggleSort} className="hidden lg:table-cell" />
+                        <SortHeader label="Updated" sortKey="updated" activeKey={sortKey} dir={sortDir} onSort={toggleSort} className="hidden xl:table-cell" />
                         <th className="px-3 py-3 text-xs font-semibold uppercase tracking-wide text-ink-tertiary text-right">Actions</th>
                       </tr>
                     </thead>
@@ -1589,19 +1589,19 @@ function UseCasePortfolioAppInner() {
                                 <div className="mt-0.5 text-xs text-ink-tertiary">{item.id}</div>
                               </div>
                             </td>
-                            <td className="whitespace-nowrap px-3 py-3 text-sm text-ink-secondary">{item.department}</td>
-                            <td className="whitespace-nowrap px-3 py-3 text-sm text-ink-secondary">{item.stakeholder}</td>
+                            <td className="hidden whitespace-nowrap px-3 py-3 text-sm text-ink-secondary sm:table-cell">{item.department}</td>
+                            <td className="hidden whitespace-nowrap px-3 py-3 text-sm text-ink-secondary md:table-cell">{item.stakeholder}</td>
                             <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
                               <StatusIndicator value={item.status} isEditor={isEditor} onChange={(v) => void applyFieldChange(item, 'status', v)} />
                             </td>
-                            <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
+                            <td className="hidden px-3 py-3 sm:table-cell" onClick={(e) => e.stopPropagation()}>
                               <PriorityIndicator value={item.priority} isEditor={isEditor} onChange={(v) => void applyFieldChange(item, 'priority', v)} />
                             </td>
-                            {isEditor && <td className="whitespace-nowrap px-3 py-3 text-sm font-semibold" style={{ color: 'var(--color-live)' }}>{signs}</td>}
-                            {isEditor && <td className="whitespace-nowrap px-3 py-3 text-sm text-ink-secondary">{item.score ? `${item.score}/100` : '—'}</td>}
-                            <td className="whitespace-nowrap px-3 py-3 text-sm text-ink-secondary">{item.horizon}</td>
-                            <td className="whitespace-nowrap px-3 py-3 text-sm text-ink-tertiary">{item.end_date || '—'}</td>
-                            <td className="whitespace-nowrap px-3 py-3 text-sm text-ink-tertiary">{formatUpdated(item.updated)}</td>
+                            {isEditor && <td className="hidden whitespace-nowrap px-3 py-3 text-sm font-semibold xl:table-cell" style={{ color: 'var(--color-live)' }}>{signs}</td>}
+                            {isEditor && <td className="hidden whitespace-nowrap px-3 py-3 text-sm text-ink-secondary xl:table-cell">{item.score ? `${item.score}/100` : '—'}</td>}
+                            <td className="hidden whitespace-nowrap px-3 py-3 text-sm text-ink-secondary lg:table-cell">{item.horizon}</td>
+                            <td className="hidden whitespace-nowrap px-3 py-3 text-sm text-ink-tertiary lg:table-cell">{item.end_date || '—'}</td>
+                            <td className="hidden whitespace-nowrap px-3 py-3 text-sm text-ink-tertiary xl:table-cell">{formatUpdated(item.updated)}</td>
                             <td className="px-3 py-3 text-right" onClick={(e) => e.stopPropagation()}>
                               <div className="flex justify-end gap-1.5">
                                 <Button variant="outline" size="sm" onClick={() => setActiveItem(item)} type="button">View</Button>
