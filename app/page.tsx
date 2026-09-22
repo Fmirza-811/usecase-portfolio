@@ -1402,7 +1402,8 @@ function UseCasePortfolioAppInner() {
     total: useCases.length,
     current: useCases.filter((i) => i.horizon === 'Current Quarter').length,
     future: useCases.filter((i) => i.horizon === 'Future Pipeline').length,
-    liveOrProgress: useCases.filter((i) => ['Live', 'In Progress'].includes(i.status)).length,
+    live: useCases.filter((i) => i.status === 'Live').length,
+    inProgress: useCases.filter((i) => i.status === 'In Progress').length,
   }), [useCases]);
 
   const departments = useMemo(() => ['All', ...Array.from(new Set(useCases.map((i) => i.department).filter(Boolean)))], [useCases]);
@@ -1481,17 +1482,21 @@ function UseCasePortfolioAppInner() {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-hairline bg-hairline lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-hairline bg-hairline md:grid-cols-3 xl:grid-cols-5">
           <div className="bg-white px-4 py-4 sm:px-6 sm:py-5">
             <p className="text-2xl font-bold leading-none tracking-tight text-ink sm:text-[34px]">{stats.total}</p>
             <p className="mt-2 text-sm text-ink-secondary">Total initiatives</p>
           </div>
           <div className="bg-white px-4 py-4 sm:px-6 sm:py-5">
-            <p className="text-2xl font-bold leading-none tracking-tight sm:text-[34px]" style={{ color: 'var(--color-live)' }}>{stats.liveOrProgress}</p>
-            <p className="mt-2 text-sm text-ink-secondary">Live or in progress</p>
+            <p className="text-2xl font-bold leading-none tracking-tight sm:text-[34px]" style={{ color: 'var(--color-live)' }}>{stats.live}</p>
+            <p className="mt-2 text-sm text-ink-secondary">Live</p>
           </div>
           <div className="bg-white px-4 py-4 sm:px-6 sm:py-5">
-            <p className="text-2xl font-bold leading-none tracking-tight text-accent sm:text-[34px]">{stats.current}</p>
+            <p className="text-2xl font-bold leading-none tracking-tight text-accent sm:text-[34px]">{stats.inProgress}</p>
+            <p className="mt-2 text-sm text-ink-secondary">In progress</p>
+          </div>
+          <div className="bg-white px-4 py-4 sm:px-6 sm:py-5">
+            <p className="text-2xl font-bold leading-none tracking-tight text-ink-secondary sm:text-[34px]">{stats.current}</p>
             <p className="mt-2 text-sm text-ink-secondary">Current quarter</p>
           </div>
           <div className="bg-white px-4 py-4 sm:px-6 sm:py-5">
@@ -1562,7 +1567,6 @@ function UseCasePortfolioAppInner() {
                         {isEditor && <SortHeader label="Score" sortKey="score" activeKey={sortKey} dir={sortDir} onSort={toggleSort} className="hidden xl:table-cell" />}
                         <SortHeader label="Horizon" sortKey="horizon" activeKey={sortKey} dir={sortDir} onSort={toggleSort} className="hidden lg:table-cell" />
                         <SortHeader label="End Date" sortKey="end_date" activeKey={sortKey} dir={sortDir} onSort={toggleSort} className="hidden lg:table-cell" />
-                        <SortHeader label="Updated" sortKey="updated" activeKey={sortKey} dir={sortDir} onSort={toggleSort} className="hidden xl:table-cell" />
                         <th className="px-3 py-3 text-xs font-semibold uppercase tracking-wide text-ink-tertiary text-right">Actions</th>
                       </tr>
                     </thead>
@@ -1585,23 +1589,22 @@ function UseCasePortfolioAppInner() {
                             )}
                             <td className="px-3 py-3">
                               <div className="text-left">
-                                <div className="font-semibold text-ink">{item.name}</div>
+                                <div className="text-[13px] font-semibold text-ink">{item.name}</div>
                                 <div className="mt-0.5 text-xs text-ink-tertiary">{item.id}</div>
                               </div>
                             </td>
-                            <td className="hidden whitespace-nowrap px-3 py-3 text-sm text-ink-secondary sm:table-cell">{item.department}</td>
-                            <td className="hidden whitespace-nowrap px-3 py-3 text-sm text-ink-secondary md:table-cell">{item.stakeholder}</td>
+                            <td className="hidden whitespace-nowrap px-3 py-3 text-[13px] text-ink-secondary sm:table-cell">{item.department}</td>
+                            <td className="hidden whitespace-nowrap px-3 py-3 text-[13px] text-ink-secondary md:table-cell">{item.stakeholder}</td>
                             <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
                               <StatusIndicator value={item.status} isEditor={isEditor} onChange={(v) => void applyFieldChange(item, 'status', v)} />
                             </td>
                             <td className="hidden px-3 py-3 sm:table-cell" onClick={(e) => e.stopPropagation()}>
                               <PriorityIndicator value={item.priority} isEditor={isEditor} onChange={(v) => void applyFieldChange(item, 'priority', v)} />
                             </td>
-                            {isEditor && <td className="hidden whitespace-nowrap px-3 py-3 text-sm font-semibold xl:table-cell" style={{ color: 'var(--color-live)' }}>{signs}</td>}
-                            {isEditor && <td className="hidden whitespace-nowrap px-3 py-3 text-sm text-ink-secondary xl:table-cell">{item.score ? `${item.score}/100` : '—'}</td>}
-                            <td className="hidden whitespace-nowrap px-3 py-3 text-sm text-ink-secondary lg:table-cell">{item.horizon}</td>
-                            <td className="hidden whitespace-nowrap px-3 py-3 text-sm text-ink-tertiary lg:table-cell">{item.end_date || '—'}</td>
-                            <td className="hidden whitespace-nowrap px-3 py-3 text-sm text-ink-tertiary xl:table-cell">{formatUpdated(item.updated)}</td>
+                            {isEditor && <td className="hidden whitespace-nowrap px-3 py-3 text-[13px] font-semibold xl:table-cell" style={{ color: 'var(--color-live)' }}>{signs}</td>}
+                            {isEditor && <td className="hidden whitespace-nowrap px-3 py-3 text-[13px] text-ink-secondary xl:table-cell">{item.score ? `${item.score}/100` : '—'}</td>}
+                            <td className="hidden whitespace-nowrap px-3 py-3 text-[13px] text-ink-secondary lg:table-cell">{item.horizon}</td>
+                            <td className="hidden whitespace-nowrap px-3 py-3 text-[13px] text-ink-tertiary lg:table-cell">{item.end_date || '—'}</td>
                             <td className="px-3 py-3 text-right" onClick={(e) => e.stopPropagation()}>
                               <div className="flex justify-end gap-1.5">
                                 <Button variant="outline" size="sm" onClick={() => setActiveItem(item)} type="button">View</Button>
@@ -1744,15 +1747,21 @@ function UseCasePortfolioAppInner() {
                     </div>
                   )}
                   {activeItem.end_date && (
-                    <div className={cn('flex items-center justify-between px-5 py-3.5', activeItem.status === 'Live' && activeItem.live_date && 'border-b border-hairline-soft')}>
+                    <div className="flex items-center justify-between border-b border-hairline-soft px-5 py-3.5">
                       <span className="text-sm text-ink-secondary">End date</span>
                       <span className="text-sm font-medium text-ink">{activeItem.end_date}</span>
                     </div>
                   )}
                   {activeItem.status === 'Live' && activeItem.live_date && (
-                    <div className="flex items-center justify-between px-5 py-3.5">
+                    <div className="flex items-center justify-between border-b border-hairline-soft px-5 py-3.5">
                       <span className="text-sm text-ink-secondary">Went live</span>
                       <span className="text-sm font-medium" style={{ color: 'var(--color-live)' }}>{activeItem.live_date}</span>
+                    </div>
+                  )}
+                  {activeItem.updated && (
+                    <div className="flex items-center justify-between px-5 py-3.5">
+                      <span className="text-sm text-ink-secondary">Last updated</span>
+                      <span className="text-sm font-medium text-ink">{formatUpdated(activeItem.updated)}</span>
                     </div>
                   )}
                   {isEditor && activeItem.value_amount && (
