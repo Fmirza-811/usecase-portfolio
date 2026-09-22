@@ -1607,7 +1607,6 @@ function UseCasePortfolioAppInner() {
                             <td className="hidden whitespace-nowrap px-3 py-3 text-[13px] text-ink-tertiary lg:table-cell">{item.end_date || '—'}</td>
                             <td className="px-3 py-3 text-right" onClick={(e) => e.stopPropagation()}>
                               <div className="flex justify-end gap-1.5">
-                                <Button variant="outline" size="sm" onClick={() => setActiveItem(item)} type="button">View</Button>
                                 {isEditor && (
                                   <>
                                     <Button variant="ghost" size="icon-sm" onClick={() => { setEditingItem(item); setFormOpen(true); }} type="button" aria-label="Edit use case"><Pencil className="h-3.5 w-3.5" /></Button>
