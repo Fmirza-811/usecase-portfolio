@@ -12,7 +12,7 @@ import { ArrowLeft, ArrowDown, ArrowUp, ArrowUpDown, Loader2, RefreshCw, Search 
 //
 // As in the tracker's own Summary tab, only Approved and Active rows count
 // towards seats and cost; a row with a Revoked Month no longer counts. The
-// department cost chart counts Active licences only, and activations per month
+// cost charts count Active licences only, and activations per month
 // come from the Access Month column (returned by the API as YYYY-MM-DD).
 
 type TrackerData = { sheet: string | null; headers: string[]; rows: string[][] };
@@ -358,15 +358,15 @@ export function AiToolsDashboard() {
     return { label: formatMonth(ym).replace(/ 20(\d\d)$/, " '$1"), value, tip: `${formatMonth(ym)}: ${value} activated · ${runningTotal} active by then` };
   });
   const costOf = (r: string[]) => (cols.cost !== undefined ? toNumber(r[cols.cost]) : 0);
-  const monthly = billable.reduce((sum, r) => sum + costOf(r), 0);
-  const activeSeats = billable.filter(isActive).length;
-  const people = cols.user !== undefined ? new Set(billable.map((r) => r[cols.user!].toLowerCase())).size : billable.length;
+  const costOfRows = (subset: string[][]) => subset.reduce((total, r) => total + costOf(r), 0);
+  const monthly = costOfRows(activeRows);
+  const activePeople = cols.user !== undefined ? new Set(activeRows.map((r) => r[cols.user!].toLowerCase())).size : activeRows.length;
+  const approved = billable.filter((r) => !isActive(r));
   const requested = rows.filter((r) => statusOf(r).toLowerCase() === 'requested');
-  const requestedCost = requested.reduce((sum, r) => sum + costOf(r), 0);
 
   const toolColor = (tool: string) => TOOL_COLORS[toolOrder.indexOf(tool)] ?? OTHER_COLOR;
-  const toolSlices = (valueOf: (r: string[]) => number): Slice[] => {
-    const totals = sum(billable, cols.tool!, valueOf);
+  const toolSlices = (subset: string[][], valueOf: (r: string[]) => number): Slice[] => {
+    const totals = sum(subset, cols.tool!, valueOf);
     const named = toolOrder.slice(0, TOOL_COLORS.length).map((label) => ({ label, value: totals.get(label) ?? 0, color: toolColor(label) }));
     const other = [...totals].filter(([t]) => !named.some((n) => n.label === t)).reduce((n, [, v]) => n + v, 0);
     return [...named, { label: 'Other', value: other, color: OTHER_COLOR }].sort((a, b) => b.value - a.value);
@@ -413,11 +413,21 @@ export function AiToolsDashboard() {
         ) : (
           <>
             <div className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-hairline bg-hairline md:grid-cols-3 xl:grid-cols-5">
-              <Stat value={formatUsd(monthly)} label="Monthly cost" detail="Approved + Active, USD" tone="text-[#22A55C]" />
+              <Stat value={formatUsd(monthly)} label="Monthly cost" detail="Active licences, USD" />
               <Stat value={formatUsd(monthly * 12)} label="Annualised cost" detail="Monthly × 12" />
-              <Stat value={formatNumber(billable.length)} label="Seats" detail={`${activeSeats} active · ${billable.length - activeSeats} approved`} tone="text-accent" />
-              <Stat value={formatNumber(people)} label="People with access" />
-              <Stat value={formatNumber(requested.length)} label="Open requests" detail={requested.length ? `${formatUsd(requestedCost)}/month if approved` : undefined} tone={requested.length ? 'text-[#D98A00]' : 'text-ink-tertiary'} />
+              <Stat value={formatNumber(activeRows.length)} label="Active licences" detail={`${formatNumber(activePeople)} ${activePeople === 1 ? 'person' : 'people'}`} tone="text-[#22A55C]" />
+              <Stat
+                value={formatNumber(approved.length)}
+                label="Approved"
+                detail={approved.length ? `Not active yet · +${formatUsd(costOfRows(approved))}/month` : 'None waiting'}
+                tone={approved.length ? 'text-accent' : 'text-ink-tertiary'}
+              />
+              <Stat
+                value={formatNumber(requested.length)}
+                label="Requested"
+                detail={requested.length ? `Awaiting approval · +${formatUsd(costOfRows(requested))}/month` : 'None open'}
+                tone={requested.length ? 'text-[#D98A00]' : 'text-ink-tertiary'}
+              />
             </div>
 
             <div className="flex flex-col gap-3 rounded-2xl border border-hairline bg-white p-4 md:p-5 lg:flex-row">
@@ -452,8 +462,8 @@ export function AiToolsDashboard() {
 
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
               {cols.tool !== undefined && cols.cost !== undefined && (
-                <ChartCard title="Monthly cost by tool" subtitle="Approved + Active, USD">
-                  <Donut slices={toolSlices(costOf)} format={formatUsd} centerLabel="per month" />
+                <ChartCard title="Monthly cost by tool" subtitle="Active licences only, USD">
+                  <Donut slices={toolSlices(activeRows, costOf)} format={formatUsd} centerLabel="per month" />
                 </ChartCard>
               )}
               {cols.status !== undefined && (
