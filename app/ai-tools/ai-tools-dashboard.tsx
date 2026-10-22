@@ -53,7 +53,22 @@ const formatNumber = (n: number) => n.toLocaleString('en-US', { maximumFractionD
 const formatUsd = (n: number) => `$${formatNumber(n)}`;
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-const isoMonth = (value: string) => /^\d{4}-\d{2}/.exec(value)?.[0];
+// Returns YYYY-MM for a month cell. Real dates arrive from the API as
+// YYYY-MM-DD; months typed as text that Sheets didn't recognise as a date
+// ("Sept-2026", "September 2026", "10/2026") are read here too.
+function parseMonth(value: string): string | undefined {
+  const iso = /^(\d{4})-(\d{2})/.exec(value);
+  if (iso) return `${iso[1]}-${iso[2]}`;
+  const named = /^([a-z]{3,})\.?[\s,\-/]*'?(\d{4}|\d{2})$/i.exec(value.trim());
+  if (named) {
+    const month = MONTHS.findIndex((m) => named[1].toLowerCase().startsWith(m.toLowerCase())) + 1;
+    const year = named[2].length === 2 ? `20${named[2]}` : named[2];
+    if (month > 0) return `${year}-${String(month).padStart(2, '0')}`;
+  }
+  const numeric = /^(\d{1,2})[/\-.](\d{4})$/.exec(value.trim());
+  if (numeric && Number(numeric[1]) >= 1 && Number(numeric[1]) <= 12) return `${numeric[2]}-${numeric[1].padStart(2, '0')}`;
+  return undefined;
+}
 const formatMonth = (ym: string) => `${MONTHS[Number(ym.slice(5, 7)) - 1]} ${ym.slice(0, 4)}`;
 
 // Every month from the first to the last given, so empty months show as zero.
@@ -334,7 +349,7 @@ export function AiToolsDashboard() {
   // Licences made active per month: Active rows, plus Revoked ones (they were
   // active once), counted in their Access Month.
   const activated = rows.filter((r) => ['active', 'revoked'].includes(statusOf(r).toLowerCase()));
-  const activationMonths = cols.started === undefined ? [] : activated.map((r) => isoMonth(r[cols.started!])).filter((m): m is string => !!m);
+  const activationMonths = cols.started === undefined ? [] : activated.map((r) => parseMonth(r[cols.started!])).filter((m): m is string => !!m);
   const undatedActivations = activated.length - activationMonths.length;
   let runningTotal = 0;
   const activations = monthRange(activationMonths).map((ym) => {
@@ -500,7 +515,7 @@ export function AiToolsDashboard() {
                                 <span className="h-2 w-2 rounded-full" style={{ background: statusColor(r[ci]) }} />
                                 {r[ci]}
                               </span>
-                            ) : ci === cols.started && isoMonth(r[ci]) ? formatMonth(isoMonth(r[ci])!) : (r[ci] || '—')}
+                            ) : ci === cols.started && parseMonth(r[ci]) ? formatMonth(parseMonth(r[ci])!) : (r[ci] || '—')}
                           </td>
                         ))}
                       </tr>
