@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { ArrowLeft, ArrowDown, ArrowUp, ArrowUpDown, Loader2, RefreshCw, Search } from 'lucide-react';
+import { ArrowLeft, ArrowDown, ArrowUp, ArrowUpDown, ChevronDown, Loader2, RefreshCw, Search } from 'lucide-react';
 
 // AI tool tracker dashboard. Data comes from the Access Log tab of the portfolio
 // Google Sheet via /api/ai-tools. It has one row per person per tool. Columns
@@ -266,7 +266,16 @@ function Stat({ value, label, detail, tone = 'text-ink' }: { value: string; labe
   );
 }
 
-const selectClass = 'h-11 w-full rounded-full border border-hairline bg-white px-4 text-sm text-ink outline-none focus:border-accent sm:w-[170px]';
+function FilterSelect({ children, ...props }: React.SelectHTMLAttributes<HTMLSelectElement>) {
+  return (
+    <div className="relative w-full sm:w-[170px]">
+      <select className="h-11 w-full appearance-none rounded-full border border-hairline bg-white pl-4 pr-10 text-sm text-ink outline-none focus:border-accent" {...props}>
+        {children}
+      </select>
+      <ChevronDown className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-tertiary" />
+    </div>
+  );
+}
 
 export function AiToolsDashboard() {
   const [data, setData] = useState<TrackerData | null>(null);
@@ -437,22 +446,22 @@ export function AiToolsDashboard() {
               </div>
               <div className="flex flex-col gap-3 sm:flex-row">
                 {cols.tool !== undefined && (
-                  <select value={toolFilter} onChange={(e) => setToolFilter(e.target.value)} className={selectClass} aria-label="Filter by tool">
+                  <FilterSelect value={toolFilter} onChange={(e) => setToolFilter(e.target.value)} aria-label="Filter by tool">
                     <option value="All">All tools</option>
                     {toolOptions.map((o) => <option key={o} value={o}>{o}</option>)}
-                  </select>
+                  </FilterSelect>
                 )}
                 {cols.department !== undefined && (
-                  <select value={deptFilter} onChange={(e) => setDeptFilter(e.target.value)} className={selectClass} aria-label="Filter by department">
+                  <FilterSelect value={deptFilter} onChange={(e) => setDeptFilter(e.target.value)} aria-label="Filter by department">
                     <option value="All">All departments</option>
                     {deptOptions.map((o) => <option key={o} value={o}>{o}</option>)}
-                  </select>
+                  </FilterSelect>
                 )}
                 {cols.status !== undefined && (
-                  <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className={selectClass} aria-label="Filter by status">
+                  <FilterSelect value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} aria-label="Filter by status">
                     <option value="All">All statuses</option>
                     {statusOptions.map((o) => <option key={o} value={o}>{o}</option>)}
-                  </select>
+                  </FilterSelect>
                 )}
                 {filtersActive && (
                   <button type="button" onClick={clearFilters} className="h-11 shrink-0 rounded-full px-4 text-sm text-ink-secondary hover:text-ink">Clear</button>
