@@ -3,6 +3,7 @@
 import React, { useEffect, useLayoutEffect, useMemo, useState, useCallback, useRef, useContext } from 'react';
 import type { ReactNode, ButtonHTMLAttributes, InputHTMLAttributes, TextareaHTMLAttributes, SelectHTMLAttributes } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { RoadmapBoard } from './roadmap-board';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -10,7 +11,7 @@ import {
   ChevronRight, ChevronDown, X, Pencil,
   RefreshCw, Trash2, BarChart2, Upload, FileText, Send, Bot, Sliders,
   ArrowUp, ArrowDown, ArrowUpDown, Command, Loader2, CheckCircle2, AlertTriangle, Info,
-  Square, CheckSquare, Map as MapIcon, type LucideIcon,
+  Square, CheckSquare, Map as MapIcon, Wrench, type LucideIcon,
 } from 'lucide-react';
 
 const EDITOR_SECRET = 'AIlabs2026';
@@ -1454,6 +1455,9 @@ function UseCasePortfolioAppInner() {
             <div className="flex flex-wrap items-center gap-2 sm:gap-4">
               <AccessBadge role={userRole} />
               <div className="hidden h-4 w-px bg-hairline sm:block" />
+              <Link href="/ai-tools" className="inline-flex h-10 items-center gap-2 rounded-full border border-hairline bg-white px-4 text-sm font-medium text-ink hover:bg-[#FAFAFA]">
+                <Wrench className="h-4 w-4" /> AI Tool Tracker
+              </Link>
               <Button variant="outline" size="icon" onClick={() => void loadData()} disabled={loading} type="button" aria-label="Refresh">
                 <RefreshCw className={cn('h-4 w-4', loading && 'animate-spin')} />
               </Button>
