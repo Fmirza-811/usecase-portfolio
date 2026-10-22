@@ -5,10 +5,10 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { ArrowLeft, ArrowDown, ArrowUp, ArrowUpDown, Loader2, RefreshCw, Search } from 'lucide-react';
 
-// AI tool tracker dashboard. Data comes from the Access Log tab of the AI tool
-// tracker, imported into the portfolio Google Sheet, via /api/ai-tools. It has
-// one row per person per tool. Columns are found by header name (FIELD_ALIASES)
-// so they can be reordered or renamed slightly without breaking the page.
+// AI tool tracker dashboard. Data comes from the Access Log tab of the portfolio
+// Google Sheet via /api/ai-tools. It has one row per person per tool. Columns
+// are found by header name (FIELD_ALIASES) so they can be reordered or renamed
+// slightly without breaking the page.
 //
 // As in the tracker's own Summary tab, only Approved and Active rows count
 // towards seats and cost; a row with a Revoked Month no longer counts.
@@ -257,7 +257,7 @@ export function AiToolsDashboard() {
           <div className="rounded-2xl border border-hairline bg-white p-6 text-sm text-[#C4384A]">Couldn&apos;t load the AI tool tracker. Please try refreshing.</div>
         ) : !data?.sheet ? (
           <div className="rounded-2xl border border-hairline bg-white p-6 text-sm text-ink-secondary">
-            No tracker found. Import <span className="font-medium text-ink">AI Tool Tracker_Org.xlsx</span> into the portfolio Google Sheet (File → Import → Insert new sheets) so it has an <span className="font-medium text-ink">Access Log</span> tab.
+            No <span className="font-medium text-ink">Access Log</span> tab found in the portfolio Google Sheet.
           </div>
         ) : (
           <>
