@@ -11,17 +11,20 @@ import { ArrowLeft, ArrowDown, ArrowUp, ArrowUpDown, Loader2, RefreshCw, Search 
 // slightly without breaking the page.
 //
 // As in the tracker's own Summary tab, only Approved and Active rows count
-// towards seats and cost; a row with a Revoked Month no longer counts.
+// towards seats and cost; a row with a Revoked Month no longer counts. The
+// department cost chart counts Active licences only, and activations per month
+// come from the Access Month column (returned by the API as YYYY-MM-DD).
 
 type TrackerData = { sheet: string | null; headers: string[]; rows: string[][] };
 
-type FieldKey = 'tool' | 'user' | 'department' | 'cost' | 'status' | 'revoked';
+type FieldKey = 'tool' | 'user' | 'department' | 'cost' | 'status' | 'revoked' | 'started';
 
 // Matched in this order, alias by alias, at the start of a word, and a column is
 // only used once.
 const FIELD_ALIASES: Array<[FieldKey, string[]]> = [
   ['cost', ['monthly cost', 'cost', 'price', 'spend', 'amount']],
   ['revoked', ['revoked', 'removed']],
+  ['started', ['access month', 'activated', 'start']],
   ['status', ['status']],
   ['department', ['department', 'dept', 'team']],
   ['tool', ['tool', 'application', 'software', 'platform']],
@@ -48,6 +51,26 @@ function toNumber(value: string): number {
 
 const formatNumber = (n: number) => n.toLocaleString('en-US', { maximumFractionDigits: 0 });
 const formatUsd = (n: number) => `$${formatNumber(n)}`;
+
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const isoMonth = (value: string) => /^\d{4}-\d{2}/.exec(value)?.[0];
+const formatMonth = (ym: string) => `${MONTHS[Number(ym.slice(5, 7)) - 1]} ${ym.slice(0, 4)}`;
+
+// Every month from the first to the last given, so empty months show as zero.
+function monthRange(months: string[]): string[] {
+  if (months.length === 0) return [];
+  const sorted = [...months].sort();
+  const out: string[] = [];
+  let [y, m] = sorted[0].split('-').map(Number);
+  const last = sorted[sorted.length - 1];
+  while (out.length < 120) {
+    const ym = `${y}-${String(m).padStart(2, '0')}`;
+    out.push(ym);
+    if (ym >= last) break;
+    if (++m > 12) { m = 1; y++; }
+  }
+  return out;
+}
 
 const STATUS_COLORS: Record<string, string> = {
   active: '#22A55C',
@@ -111,7 +134,7 @@ function Donut({ slices, format, centerLabel }: { slices: Slice[]; format: (n: n
                 cx="80" cy="80" r={r} fill="none" stroke={s.color} strokeWidth={hover === s.label ? 26 : 22}
                 strokeDasharray={`${Math.max(lengths[i] - gap, 0.5)} ${circumference}`} strokeDashoffset={-starts[i]}
                 opacity={hover && hover !== s.label ? 0.35 : 1}
-                className="cursor-pointer transition-all"
+                className="cursor-pointer transition-[opacity,stroke-width]"
                 onMouseEnter={() => setHover(s.label)} onMouseLeave={() => setHover(null)}
               >
                 <title>{`${s.label}: ${format(s.value)} (${Math.round((s.value / total) * 100)}%)`}</title>
@@ -141,15 +164,15 @@ function Donut({ slices, format, centerLabel }: { slices: Slice[]; format: (n: n
   );
 }
 
-function Columns({ items, format }: { items: Array<{ label: string; value: number }>; format: (n: number) => string }) {
+function Columns({ items, format }: { items: Array<{ label: string; value: number; tip?: string }>; format: (n: number) => string }) {
   if (items.length === 0) return <Empty />;
   const max = Math.max(...items.map((i) => i.value));
   return (
     <div className="flex min-h-[200px] flex-1 flex-col">
       <div className="flex flex-1 items-end gap-2 border-b border-hairline sm:gap-3">
         {items.map((i) => (
-          <div key={i.label} className="group flex h-full min-w-0 flex-1 flex-col items-center justify-end" title={`${i.label}: ${format(i.value)}`}>
-            <span className="mb-1 text-[11px] font-medium tabular-nums text-ink-secondary">{format(i.value)}</span>
+          <div key={i.label} className="group flex h-full min-w-0 flex-1 flex-col items-center justify-end" title={i.tip ?? `${i.label}: ${format(i.value)}`}>
+            <span className={`mb-1 text-[11px] font-medium tabular-nums ${i.value ? 'text-ink-secondary' : 'text-ink-tertiary'}`}>{format(i.value)}</span>
             <div className="w-full max-w-[44px] rounded-t-[4px] bg-accent transition-opacity group-hover:opacity-80" style={{ height: `${(i.value / max) * 85}%` }} />
           </div>
         ))}
@@ -306,6 +329,19 @@ export function AiToolsDashboard() {
   }, [rows, sort]);
 
   const billable = rows.filter(isBillable);
+  const activeRows = billable.filter(isActive);
+
+  // Licences made active per month: Active rows, plus Revoked ones (they were
+  // active once), counted in their Access Month.
+  const activated = rows.filter((r) => ['active', 'revoked'].includes(statusOf(r).toLowerCase()));
+  const activationMonths = cols.started === undefined ? [] : activated.map((r) => isoMonth(r[cols.started!])).filter((m): m is string => !!m);
+  const undatedActivations = activated.length - activationMonths.length;
+  let runningTotal = 0;
+  const activations = monthRange(activationMonths).map((ym) => {
+    const value = activationMonths.filter((m) => m === ym).length;
+    runningTotal += value;
+    return { label: formatMonth(ym).replace(/ 20(\d\d)$/, " '$1"), value, tip: `${formatMonth(ym)}: ${value} activated · ${runningTotal} active by then` };
+  });
   const costOf = (r: string[]) => (cols.cost !== undefined ? toNumber(r[cols.cost]) : 0);
   const monthly = billable.reduce((sum, r) => sum + costOf(r), 0);
   const activeSeats = billable.filter(isActive).length;
@@ -415,12 +451,21 @@ export function AiToolsDashboard() {
                 </ChartCard>
               )}
               {cols.department !== undefined && cols.cost !== undefined && (
-                <ChartCard title="Monthly cost by department" subtitle="Approved + Active, USD" className="md:col-span-2">
-                  <Columns items={[...sum(billable, cols.department, costOf)].map(([label, value]) => ({ label, value })).sort((a, b) => b.value - a.value)} format={formatUsd} />
+                <ChartCard title="Monthly cost by department" subtitle="Active licences only, USD" className="md:col-span-2">
+                  <Columns items={[...sum(activeRows, cols.department, costOf)].map(([label, value]) => ({ label, value })).sort((a, b) => b.value - a.value)} format={formatUsd} />
+                </ChartCard>
+              )}
+              {cols.started !== undefined && (
+                <ChartCard
+                  title="Licences activated per month"
+                  subtitle={`By Access Month${undatedActivations ? ` · ${undatedActivations} active without a month` : ''}`}
+                  className="md:col-span-2"
+                >
+                  <Columns items={activations} format={formatNumber} />
                 </ChartCard>
               )}
               {cols.tool !== undefined && cols.department !== undefined && (
-                <ChartCard title="Who uses what" subtitle="Seats by tool and department, Approved + Active" className="md:col-span-2 lg:col-span-4">
+                <ChartCard title="Who uses what" subtitle="Seats by tool and department, Approved + Active" className="md:col-span-2">
                   <Matrix rows={billable} toolIndex={cols.tool} deptIndex={cols.department} tools={toolOrder} colorOf={toolColor} />
                 </ChartCard>
               )}
@@ -455,7 +500,7 @@ export function AiToolsDashboard() {
                                 <span className="h-2 w-2 rounded-full" style={{ background: statusColor(r[ci]) }} />
                                 {r[ci]}
                               </span>
-                            ) : (r[ci] || '—')}
+                            ) : ci === cols.started && isoMonth(r[ci]) ? formatMonth(isoMonth(r[ci])!) : (r[ci] || '—')}
                           </td>
                         ))}
                       </tr>
