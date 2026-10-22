@@ -58,75 +58,162 @@ const STATUS_COLORS: Record<string, string> = {
 };
 const statusColor = (status: string) => STATUS_COLORS[status.toLowerCase()] ?? '#A1A1A6';
 
-// Seat bars split Active (solid) from Approved, not yet set up (light).
-const ACTIVE_FILL = '#118BA1';
-const APPROVED_FILL = '#9FD3DD';
+// Tool colours, assigned in a fixed order by how many rows each tool has in the
+// whole log, so a tool keeps its colour when filters change. Tools past the
+// fifth fold into "Other".
+const TOOL_COLORS = ['#2a78d6', '#eb6834', '#1baf7a', '#eda100', '#6250d6'];
+const OTHER_COLOR = '#A1A1A6';
 
-type Bar = { label: string; value: number; active?: number };
+type Slice = { label: string; value: number; color: string };
 
-function group(rows: string[][], keyIndex: number, valueOf: (row: string[]) => number, isActive?: (row: string[]) => boolean): Bar[] {
-  const totals = new Map<string, Bar>();
+function sum(rows: string[][], keyIndex: number, valueOf: (row: string[]) => number): Map<string, number> {
+  const totals = new Map<string, number>();
   rows.forEach((row) => {
-    const label = row[keyIndex] || 'Not set';
-    const bar = totals.get(label) ?? { label, value: 0, active: 0 };
-    bar.value += valueOf(row);
-    if (isActive?.(row)) bar.active! += valueOf(row);
-    totals.set(label, bar);
+    const key = row[keyIndex] || 'Not set';
+    totals.set(key, (totals.get(key) ?? 0) + valueOf(row));
   });
-  return [...totals.values()].filter((b) => b.value > 0).sort((a, b) => b.value - a.value);
+  return totals;
 }
 
-function BarList({ title, subtitle, items, format, split = false }: {
-  title: string;
-  subtitle: string;
-  items: Bar[];
-  format: (n: number) => string;
-  split?: boolean;
-}) {
-  const max = Math.max(...items.map((b) => b.value), 1);
+function ChartCard({ title, subtitle, className = '', children }: { title: string; subtitle: string; className?: string; children: React.ReactNode }) {
   return (
-    <div className="rounded-2xl border border-hairline bg-white p-5">
-      <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
-        <div>
-          <h3 className="text-sm font-semibold text-ink">{title}</h3>
-          <p className="mt-0.5 text-xs text-ink-tertiary">{subtitle}</p>
+    <div className={`flex min-w-0 flex-col rounded-2xl border border-hairline bg-white p-5 ${className}`}>
+      <h3 className="text-sm font-semibold text-ink">{title}</h3>
+      <p className="mt-0.5 text-xs text-ink-tertiary">{subtitle}</p>
+      <div className="mt-4 flex flex-1 flex-col">{children}</div>
+    </div>
+  );
+}
+
+const Empty = () => <p className="m-auto text-xs italic text-ink-tertiary">Nothing to show</p>;
+
+function Donut({ slices, format, centerLabel }: { slices: Slice[]; format: (n: number) => string; centerLabel: string }) {
+  const [hover, setHover] = useState<string | null>(null);
+  const shown = slices.filter((s) => s.value > 0);
+  const total = shown.reduce((t, s) => t + s.value, 0);
+  if (total === 0) return <Empty />;
+
+  const r = 60;
+  const circumference = 2 * Math.PI * r;
+  const gap = shown.length > 1 ? 2 : 0;
+  const lengths = shown.map((s) => (s.value / total) * circumference);
+  const starts = lengths.map((_, i) => lengths.slice(0, i).reduce((t, l) => t + l, 0));
+  const active = shown.find((s) => s.label === hover);
+
+  return (
+    <div className="flex flex-1 flex-col items-center justify-center gap-4">
+      <div className="relative h-40 w-40 shrink-0">
+        <svg viewBox="0 0 160 160" className="h-full w-full -rotate-90" role="img" aria-label={shown.map((s) => `${s.label} ${format(s.value)}`).join(', ')}>
+          <circle cx="80" cy="80" r={r} fill="none" stroke="rgba(0,0,0,0.04)" strokeWidth="22" />
+          {shown.map((s, i) => (
+              <circle
+                key={s.label}
+                cx="80" cy="80" r={r} fill="none" stroke={s.color} strokeWidth={hover === s.label ? 26 : 22}
+                strokeDasharray={`${Math.max(lengths[i] - gap, 0.5)} ${circumference}`} strokeDashoffset={-starts[i]}
+                opacity={hover && hover !== s.label ? 0.35 : 1}
+                className="cursor-pointer transition-all"
+                onMouseEnter={() => setHover(s.label)} onMouseLeave={() => setHover(null)}
+              >
+                <title>{`${s.label}: ${format(s.value)} (${Math.round((s.value / total) * 100)}%)`}</title>
+              </circle>
+          ))}
+        </svg>
+        <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
+          <span className="text-xl font-bold tracking-tight text-ink">{format(active ? active.value : total)}</span>
+          <span className="max-w-[90px] truncate text-[11px] text-ink-tertiary">{active ? active.label : centerLabel}</span>
         </div>
-        {split && (
-          <div className="flex gap-3 text-xs text-ink-secondary">
-            <span className="inline-flex items-center gap-1.5"><span className="h-2 w-2 rounded-sm" style={{ background: ACTIVE_FILL }} />Active</span>
-            <span className="inline-flex items-center gap-1.5"><span className="h-2 w-2 rounded-sm" style={{ background: APPROVED_FILL }} />Approved</span>
-          </div>
-        )}
       </div>
-      {items.length === 0 ? (
-        <p className="mt-4 text-xs italic text-ink-tertiary">Nothing to show</p>
-      ) : (
-        <ul className="mt-4 space-y-2.5">
-          {items.map((b) => {
-            const tip = split ? `${b.label}: ${format(b.value)} (${b.active ?? 0} active, ${b.value - (b.active ?? 0)} approved)` : `${b.label}: ${format(b.value)}`;
+      <ul className="w-full space-y-1">
+        {shown.map((s) => (
+          <li
+            key={s.label}
+            onMouseEnter={() => setHover(s.label)} onMouseLeave={() => setHover(null)}
+            className={`flex items-center gap-2 rounded-lg px-2 py-1 text-xs transition ${hover === s.label ? 'bg-black/[0.04]' : ''}`}
+          >
+            <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: s.color }} />
+            <span className="min-w-0 flex-1 truncate text-ink">{s.label}</span>
+            <span className="tabular-nums text-ink-secondary">{format(s.value)}</span>
+            <span className="w-9 text-right tabular-nums text-ink-tertiary">{Math.round((s.value / total) * 100)}%</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function Columns({ items, format }: { items: Array<{ label: string; value: number }>; format: (n: number) => string }) {
+  if (items.length === 0) return <Empty />;
+  const max = Math.max(...items.map((i) => i.value));
+  return (
+    <div className="flex min-h-[200px] flex-1 flex-col">
+      <div className="flex flex-1 items-end gap-2 border-b border-hairline sm:gap-3">
+        {items.map((i) => (
+          <div key={i.label} className="group flex h-full min-w-0 flex-1 flex-col items-center justify-end" title={`${i.label}: ${format(i.value)}`}>
+            <span className="mb-1 text-[11px] font-medium tabular-nums text-ink-secondary">{format(i.value)}</span>
+            <div className="w-full max-w-[44px] rounded-t-[4px] bg-accent transition-opacity group-hover:opacity-80" style={{ height: `${(i.value / max) * 85}%` }} />
+          </div>
+        ))}
+      </div>
+      <div className="mt-1.5 flex gap-2 sm:gap-3">
+        {items.map((i) => (
+          <span key={i.label} className="min-w-0 flex-1 truncate text-center text-[11px] text-ink-secondary" title={i.label}>{i.label}</span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// Seats per tool (rows) and department (columns), shaded on one teal ramp.
+function Matrix({ rows, toolIndex, deptIndex, tools, colorOf }: {
+  rows: string[][];
+  toolIndex: number;
+  deptIndex: number;
+  tools: string[];
+  colorOf: (tool: string) => string;
+}) {
+  const depts = [...sum(rows, deptIndex, () => 1)].sort((a, b) => b[1] - a[1]).map(([d]) => d);
+  const toolList = tools.filter((t) => rows.some((r) => r[toolIndex] === t));
+  if (toolList.length === 0) return <Empty />;
+  const count = (t: string, d: string) => rows.filter((r) => r[toolIndex] === t && (r[deptIndex] || 'Not set') === d).length;
+  const max = Math.max(...toolList.flatMap((t) => depts.map((d) => count(t, d))), 1);
+  return (
+    <div className="-mx-1 overflow-x-auto">
+      <table className="w-full border-separate border-spacing-1 text-xs">
+        <thead>
+          <tr>
+            <th />
+            {depts.map((d) => <th key={d} className="whitespace-nowrap px-1 pb-1 text-center font-medium text-ink-secondary">{d}</th>)}
+            <th className="px-2 pb-1 text-right font-medium text-ink-secondary">Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          {toolList.map((t) => {
+            const total = depts.reduce((n, d) => n + count(t, d), 0);
             return (
-              <li key={b.label} className="group" title={tip}>
-                <div className="flex items-baseline justify-between gap-3 text-xs">
-                  <span className="truncate text-ink">{b.label}</span>
-                  <span className="shrink-0 font-medium tabular-nums text-ink-secondary">{format(b.value)}</span>
-                </div>
-                <div className="mt-1 h-2 rounded-full bg-black/[0.04]">
-                  <div className="flex h-2 gap-[2px] transition-opacity group-hover:opacity-80" style={{ width: `${(b.value / max) * 100}%` }}>
-                    {split ? (
-                      <>
-                        {(b.active ?? 0) > 0 && <div className="h-2 rounded-full" style={{ background: ACTIVE_FILL, flexGrow: b.active }} />}
-                        {b.value - (b.active ?? 0) > 0 && <div className="h-2 rounded-full" style={{ background: APPROVED_FILL, flexGrow: b.value - (b.active ?? 0) }} />}
-                      </>
-                    ) : (
-                      <div className="h-2 flex-1 rounded-full" style={{ background: ACTIVE_FILL }} />
-                    )}
-                  </div>
-                </div>
-              </li>
+              <tr key={t}>
+                <th className="whitespace-nowrap pr-3 text-left font-medium text-ink">
+                  <span className="inline-flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full" style={{ background: colorOf(t) }} />{t}</span>
+                </th>
+                {depts.map((d) => {
+                  const n = count(t, d);
+                  const strength = n / max;
+                  return (
+                    <td
+                      key={d}
+                      title={`${t} · ${d}: ${n} seat${n === 1 ? '' : 's'}`}
+                      className="h-10 min-w-[44px] rounded-md text-center font-semibold tabular-nums"
+                      style={n ? { background: `rgba(17, 139, 161, ${0.12 + 0.88 * strength})`, color: strength > 0.45 ? '#fff' : '#0A6A82' } : { background: 'rgba(0,0,0,0.025)', color: '#A1A1A6' }}
+                    >
+                      {n || '·'}
+                    </td>
+                  );
+                })}
+                <td className="px-2 text-right font-semibold tabular-nums text-ink">{total}</td>
+              </tr>
             );
           })}
-        </ul>
-      )}
+        </tbody>
+      </table>
     </div>
   );
 }
@@ -187,6 +274,12 @@ export function AiToolsDashboard() {
   }, [cols]);
   const isActive = useCallback((r: string[]) => statusOf(r).toLowerCase() === 'active', [statusOf]);
 
+  // Tools ordered by row count across the whole log; fixes each tool's colour.
+  const toolOrder = useMemo(
+    () => (cols.tool === undefined ? [] : [...sum(allRows, cols.tool, () => 1)].sort((a, b) => b[1] - a[1]).map(([t]) => t)),
+    [allRows, cols],
+  );
+
   const [toolOptions, deptOptions, statusOptions] = useMemo(() => {
     const options = (index: number | undefined) =>
       index === undefined ? [] : [...new Set(allRows.map((r) => r[index]).filter(Boolean))].sort((a, b) => a.localeCompare(b));
@@ -219,7 +312,14 @@ export function AiToolsDashboard() {
   const people = cols.user !== undefined ? new Set(billable.map((r) => r[cols.user!].toLowerCase())).size : billable.length;
   const requested = rows.filter((r) => statusOf(r).toLowerCase() === 'requested');
   const requestedCost = requested.reduce((sum, r) => sum + costOf(r), 0);
-  const seat = () => 1;
+
+  const toolColor = (tool: string) => TOOL_COLORS[toolOrder.indexOf(tool)] ?? OTHER_COLOR;
+  const toolSlices = (valueOf: (r: string[]) => number): Slice[] => {
+    const totals = sum(billable, cols.tool!, valueOf);
+    const named = toolOrder.slice(0, TOOL_COLORS.length).map((label) => ({ label, value: totals.get(label) ?? 0, color: toolColor(label) }));
+    const other = [...totals].filter(([t]) => !named.some((n) => n.label === t)).reduce((n, [, v]) => n + v, 0);
+    return [...named, { label: 'Other', value: other, color: OTHER_COLOR }].sort((a, b) => b.value - a.value);
+  };
 
   const toggleSort = (col: number) =>
     setSort((s) => (s?.col !== col ? { col, dir: 'asc' } : s.dir === 'asc' ? { col, dir: 'desc' } : null));
@@ -299,18 +399,30 @@ export function AiToolsDashboard() {
               </div>
             </div>
 
-            <div className="grid items-start gap-4 md:grid-cols-2">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
               {cols.tool !== undefined && cols.cost !== undefined && (
-                <BarList title="Monthly cost by tool" subtitle="Approved + Active, USD" items={group(billable, cols.tool, costOf)} format={formatUsd} />
+                <ChartCard title="Monthly cost by tool" subtitle="Approved + Active, USD">
+                  <Donut slices={toolSlices(costOf)} format={formatUsd} centerLabel="per month" />
+                </ChartCard>
+              )}
+              {cols.status !== undefined && (
+                <ChartCard title="Access by status" subtitle="Every row in the log">
+                  <Donut
+                    slices={[...sum(rows, cols.status, () => 1)].sort((a, b) => b[1] - a[1]).map(([label, value]) => ({ label, value, color: statusColor(label) }))}
+                    format={formatNumber}
+                    centerLabel="in the log"
+                  />
+                </ChartCard>
               )}
               {cols.department !== undefined && cols.cost !== undefined && (
-                <BarList title="Monthly cost by department" subtitle="Approved + Active, USD" items={group(billable, cols.department, costOf)} format={formatUsd} />
+                <ChartCard title="Monthly cost by department" subtitle="Approved + Active, USD" className="md:col-span-2">
+                  <Columns items={[...sum(billable, cols.department, costOf)].map(([label, value]) => ({ label, value })).sort((a, b) => b.value - a.value)} format={formatUsd} />
+                </ChartCard>
               )}
-              {cols.tool !== undefined && (
-                <BarList title="Seats by tool" subtitle="Approved + Active" items={group(billable, cols.tool, seat, isActive)} format={formatNumber} split />
-              )}
-              {cols.department !== undefined && (
-                <BarList title="Seats by department" subtitle="Approved + Active" items={group(billable, cols.department, seat, isActive)} format={formatNumber} split />
+              {cols.tool !== undefined && cols.department !== undefined && (
+                <ChartCard title="Who uses what" subtitle="Seats by tool and department, Approved + Active" className="md:col-span-2 lg:col-span-4">
+                  <Matrix rows={billable} toolIndex={cols.tool} deptIndex={cols.department} tools={toolOrder} colorOf={toolColor} />
+                </ChartCard>
               )}
             </div>
 
