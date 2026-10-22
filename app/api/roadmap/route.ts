@@ -10,7 +10,7 @@ import { JWT } from 'google-auth-library';
 
 const SPREADSHEET_ID = '1YAzLS4CJ2bF6L1WLcYRTofEmmYZD3LraRvDjnTEsyLg';
 const SHEET_TITLE = 'roadmap';
-const COLUMNS = ['lane', 'horizon', 'product', 'title', 'detail', 'status', 'eta', 'dependency'] as const;
+const COLUMNS = ['lane', 'horizon', 'product', 'title', 'detail', 'status', 'eta', 'dependency', 'outcome'] as const;
 
 type RoadmapRow = Record<(typeof COLUMNS)[number], string>;
 

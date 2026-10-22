@@ -17,6 +17,7 @@ type RoadmapItem = {
   status: RoadmapStatus;
   eta?: string;
   dependency?: string;
+  outcome?: string;
 };
 
 type Lane = {
@@ -155,6 +156,12 @@ function RoadmapCard({ item, onEdit }: { item: RoadmapItem; onEdit?: () => void 
       </div>
       <p className="text-[13px] font-semibold leading-5 text-ink">{item.title}</p>
       <p className="text-xs leading-5 text-ink-secondary">{item.detail}</p>
+      {item.outcome && (
+        <div className="mt-0.5 rounded-lg bg-[#22A55C]/10 px-2.5 py-1.5">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-[#1B7F47]">Outcome</p>
+          <p className="text-xs leading-5 text-ink">{item.outcome}</p>
+        </div>
+      )}
       {(item.eta || item.dependency) && (
         <div className="mt-0.5 flex flex-wrap gap-1.5">
           {item.eta && <span className="rounded-md bg-black/[0.04] px-2 py-0.5 text-[11px] font-medium text-ink">{item.eta}</span>}
@@ -190,6 +197,7 @@ function fromRows(rows: Array<Record<string, string>>): Lane[] {
           status: (STATUS_KEYS.includes(r.status as RoadmapStatus) ? r.status : 'plan') as RoadmapStatus,
           ...(r.eta ? { eta: r.eta } : {}),
           ...(r.dependency ? { dependency: r.dependency } : {}),
+          ...(r.outcome ? { outcome: r.outcome } : {}),
         }));
     return { ...lane, now: pick('now'), next: pick('next'), later: pick('later') };
   });
@@ -213,7 +221,7 @@ function CardEditor({ item, horizon, onCancel, onSave, onDelete }: {
   onSave: (item: RoadmapItem, horizon: HorizonKey) => void;
   onDelete: () => void;
 }) {
-  const [form, setForm] = useState({ ...item, eta: item.eta ?? '', dependency: item.dependency ?? '' });
+  const [form, setForm] = useState({ ...item, eta: item.eta ?? '', dependency: item.dependency ?? '', outcome: item.outcome ?? '' });
   const [column, setColumn] = useState<HorizonKey>(horizon);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const set = (key: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
@@ -237,6 +245,7 @@ function CardEditor({ item, horizon, onCancel, onSave, onDelete }: {
       status: form.status,
       ...(form.eta.trim() ? { eta: form.eta.trim() } : {}),
       ...(form.dependency.trim() ? { dependency: form.dependency.trim() } : {}),
+      ...(form.outcome.trim() ? { outcome: form.outcome.trim() } : {}),
     };
     onSave(next, column);
   };
@@ -266,6 +275,9 @@ function CardEditor({ item, horizon, onCancel, onSave, onDelete }: {
           </Field>
           <Field label="ETA (optional)"><input className={fieldClass} value={form.eta} onChange={set('eta')} placeholder="e.g. ~1 month" /></Field>
           <Field label="Dependency (optional)"><input className={fieldClass} value={form.dependency} onChange={set('dependency')} placeholder="e.g. ERMS / payroll data" /></Field>
+          <div className="sm:col-span-2">
+            <Field label="Outcome (optional)"><textarea className={fieldClass} rows={2} value={form.outcome} onChange={set('outcome')} placeholder="What changes for the business when this lands" /></Field>
+          </div>
         </div>
         <div className="flex flex-wrap items-center justify-between gap-2 border-t border-hairline bg-[#FAFAFA] px-5 py-3">
           <button
