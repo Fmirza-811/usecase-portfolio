@@ -11,7 +11,7 @@ import {
   ChevronRight, ChevronDown, X, Pencil,
   RefreshCw, Trash2, BarChart2, Upload, FileText, Send, Bot, Sliders,
   ArrowUp, ArrowDown, ArrowUpDown, Command, Loader2, CheckCircle2, AlertTriangle, Info,
-  Square, CheckSquare, Map as MapIcon, Wrench, type LucideIcon,
+  Square, CheckSquare, type LucideIcon,
 } from 'lucide-react';
 
 const EDITOR_SECRET = 'AIlabs2026';
@@ -1455,8 +1455,19 @@ function UseCasePortfolioAppInner() {
             <div className="flex flex-wrap items-center gap-2 sm:gap-4">
               <AccessBadge role={userRole} />
               <div className="hidden h-4 w-px bg-hairline sm:block" />
-              <Link href="/ai-tools" className="inline-flex h-10 items-center gap-2 rounded-full border border-hairline bg-white px-4 text-sm font-medium text-ink hover:bg-[#FAFAFA]">
-                <Wrench className="h-4 w-4" /> AI Tool Tracker
+              <button
+                type="button"
+                onClick={() => setView(view === 'roadmap' ? 'table' : 'roadmap')}
+                aria-pressed={view === 'roadmap'}
+                className={cn(
+                  'inline-flex h-10 items-center rounded-full px-4 text-sm font-medium transition',
+                  view === 'roadmap' ? 'bg-accent text-white hover:bg-accent-deep' : 'bg-accent/10 text-accent-deep hover:bg-accent/15',
+                )}
+              >
+                Roadmap
+              </button>
+              <Link href="/ai-tools" className="inline-flex h-10 items-center rounded-full bg-accent/10 px-4 text-sm font-medium text-accent-deep transition hover:bg-accent/15">
+                AI Tool Tracker
               </Link>
               <Button variant="outline" size="icon" onClick={() => void loadData()} disabled={loading} type="button" aria-label="Refresh">
                 <RefreshCw className={cn('h-4 w-4', loading && 'animate-spin')} />
@@ -1533,9 +1544,6 @@ function UseCasePortfolioAppInner() {
                   </button>
                   <button className={cn('inline-flex items-center rounded-full px-3 py-2 text-sm', view === 'cards' ? 'border border-hairline bg-white text-ink' : 'text-ink-secondary')} onClick={() => setView('cards')} type="button">
                     <LayoutGrid className="mr-2 h-4 w-4" /> Cards
-                  </button>
-                  <button className={cn('inline-flex items-center rounded-full px-3 py-2 text-sm', view === 'roadmap' ? 'border border-hairline bg-white text-ink' : 'text-ink-secondary')} onClick={() => setView('roadmap')} type="button">
-                    <MapIcon className="mr-2 h-4 w-4" /> Roadmap
                   </button>
                 </div>
                 {isEditor && (
