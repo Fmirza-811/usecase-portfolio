@@ -1633,7 +1633,7 @@ function UseCasePortfolioAppInner() {
             </motion.div>
           ) : view === 'roadmap' ? (
             <motion.div key="roadmap" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }}>
-              <RoadmapBoard />
+              <RoadmapBoard isEditor={isEditor} />
             </motion.div>
           ) : (
             <motion.div key="cards" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">

@@ -1,9 +1,12 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
+import { Loader2, Pencil, X } from 'lucide-react';
 
-// AI Labs Now / Next / Later roadmap. Content is maintained here; edit the
-// LANES array to update the board.
+// AI Labs Now / Next / Later roadmap. LANES below holds the default content.
+// Editors (?editor=<secret>) can edit cards in the page; their changes are
+// saved to the "roadmap" tab of the Google Sheet via /api/roadmap, and once
+// that tab has rows it takes precedence over the defaults here.
 
 type RoadmapStatus = 'live' | 'uat' | 'build' | 'start' | 'disc' | 'plan' | 'opp';
 
@@ -43,6 +46,8 @@ const horizons = [
   { key: 'next', label: 'Next', range: 'H1 2027 · Jan–Jun', color: '#C99A2E' },
   { key: 'later', label: 'Later', range: 'H2 2027 onward', color: '#A1A1A6' },
 ] as const;
+
+type HorizonKey = (typeof horizons)[number]['key'];
 
 const LANES: Lane[] = [
   {
@@ -128,12 +133,25 @@ function StatusDot({ status }: { status: RoadmapStatus }) {
   );
 }
 
-function RoadmapCard({ item }: { item: RoadmapItem }) {
+function RoadmapCard({ item, onEdit }: { item: RoadmapItem; onEdit?: () => void }) {
   return (
-    <div className={`flex flex-col gap-1.5 rounded-xl border bg-white px-3.5 py-3 ${item.status === 'opp' ? 'border-dashed border-ink-tertiary/60' : 'border-hairline'}`}>
+    <div className={`group relative flex flex-col gap-1.5 rounded-xl border bg-white px-3.5 py-3 ${item.status === 'opp' ? 'border-dashed border-ink-tertiary/60' : 'border-hairline'}`}>
       <div className="flex items-center justify-between gap-2">
         <span className="text-[11px] font-semibold uppercase tracking-wide text-accent">{item.product}</span>
-        <StatusDot status={item.status} />
+        <div className="flex items-center gap-1">
+          <StatusDot status={item.status} />
+          {onEdit && (
+            <button
+              type="button"
+              onClick={onEdit}
+              aria-label={`Edit ${item.title}`}
+              title="Edit card"
+              className="-mr-1.5 rounded-full p-1 text-ink-tertiary opacity-60 transition hover:bg-black/[0.05] hover:text-ink group-hover:opacity-100 focus-visible:opacity-100"
+            >
+              <Pencil className="h-3.5 w-3.5" />
+            </button>
+          )}
+        </div>
       </div>
       <p className="text-[13px] font-semibold leading-5 text-ink">{item.title}</p>
       <p className="text-xs leading-5 text-ink-secondary">{item.detail}</p>
@@ -147,9 +165,179 @@ function RoadmapCard({ item }: { item: RoadmapItem }) {
   );
 }
 
-export function RoadmapBoard() {
+type FlatItem = RoadmapItem & { lane: string; horizon: HorizonKey };
+type EditTarget = { laneId: string; horizon: HorizonKey; index: number };
+type SaveState = 'idle' | 'saving' | 'saved' | 'error';
+
+const STATUS_KEYS = Object.keys(statusMeta) as RoadmapStatus[];
+const HORIZON_KEYS = horizons.map((h) => h.key) as HorizonKey[];
+
+function flatten(lanes: Lane[]): FlatItem[] {
+  return lanes.flatMap((lane) => HORIZON_KEYS.flatMap((h) => lane[h].map((item) => ({ ...item, lane: lane.id, horizon: h }))));
+}
+
+// Rebuilds the lanes from saved rows. Lane names, descriptions and the Ongoing
+// banner still come from LANES; rows for an unknown lane are ignored.
+function fromRows(rows: Array<Record<string, string>>): Lane[] {
+  return LANES.map((lane) => {
+    const pick = (h: HorizonKey): RoadmapItem[] =>
+      rows
+        .filter((r) => r.lane === lane.id && r.horizon === h)
+        .map((r) => ({
+          product: r.product ?? '',
+          title: r.title ?? '',
+          detail: r.detail ?? '',
+          status: (STATUS_KEYS.includes(r.status as RoadmapStatus) ? r.status : 'plan') as RoadmapStatus,
+          ...(r.eta ? { eta: r.eta } : {}),
+          ...(r.dependency ? { dependency: r.dependency } : {}),
+        }));
+    return { ...lane, now: pick('now'), next: pick('next'), later: pick('later') };
+  });
+}
+
+const fieldClass = 'w-full rounded-xl border border-hairline bg-white px-3 py-2 text-sm text-ink outline-none placeholder:text-ink-tertiary focus:border-accent';
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <label className="flex flex-col gap-1">
+      <span className="text-xs font-medium text-ink-secondary">{label}</span>
+      {children}
+    </label>
+  );
+}
+
+function CardEditor({ item, horizon, onCancel, onSave, onDelete }: {
+  item: RoadmapItem;
+  horizon: HorizonKey;
+  onCancel: () => void;
+  onSave: (item: RoadmapItem, horizon: HorizonKey) => void;
+  onDelete: () => void;
+}) {
+  const [form, setForm] = useState({ ...item, eta: item.eta ?? '', dependency: item.dependency ?? '' });
+  const [column, setColumn] = useState<HorizonKey>(horizon);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const set = (key: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
+    setForm((f) => ({ ...f, [key]: e.target.value }));
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onCancel(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onCancel]);
+
+  const canSave = form.title.trim() !== '' && form.product.trim() !== '';
+
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!canSave) return;
+    const next: RoadmapItem = {
+      product: form.product.trim(),
+      title: form.title.trim(),
+      detail: form.detail.trim(),
+      status: form.status,
+      ...(form.eta.trim() ? { eta: form.eta.trim() } : {}),
+      ...(form.dependency.trim() ? { dependency: form.dependency.trim() } : {}),
+    };
+    onSave(next, column);
+  };
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/25 p-4" onMouseDown={(e) => { if (e.target === e.currentTarget) onCancel(); }}>
+      <form onSubmit={submit} role="dialog" aria-modal="true" aria-labelledby="roadmap-edit-title" className="max-h-[90vh] w-full max-w-lg overflow-auto rounded-2xl bg-white shadow-2xl">
+        <div className="flex items-start justify-between gap-4 border-b border-hairline px-5 py-4">
+          <h2 id="roadmap-edit-title" className="text-lg font-semibold tracking-tight text-ink">Edit roadmap card</h2>
+          <button type="button" onClick={onCancel} aria-label="Close" className="rounded-full p-1.5 text-ink-secondary hover:bg-black/[0.04]"><X className="h-4 w-4" /></button>
+        </div>
+        <div className="grid gap-3 px-5 py-4 sm:grid-cols-2">
+          <Field label="Product / area"><input className={fieldClass} value={form.product} onChange={set('product')} required /></Field>
+          <Field label="Title"><input className={fieldClass} value={form.title} onChange={set('title')} required /></Field>
+          <div className="sm:col-span-2">
+            <Field label="Detail"><textarea className={fieldClass} rows={3} value={form.detail} onChange={set('detail')} /></Field>
+          </div>
+          <Field label="Status">
+            <select className={fieldClass} value={form.status} onChange={set('status')}>
+              {STATUS_KEYS.map((s) => <option key={s} value={s}>{statusMeta[s].label}</option>)}
+            </select>
+          </Field>
+          <Field label="Column">
+            <select className={fieldClass} value={column} onChange={(e) => setColumn(e.target.value as HorizonKey)}>
+              {horizons.map((h) => <option key={h.key} value={h.key}>{h.label} · {h.range}</option>)}
+            </select>
+          </Field>
+          <Field label="ETA (optional)"><input className={fieldClass} value={form.eta} onChange={set('eta')} placeholder="e.g. ~1 month" /></Field>
+          <Field label="Dependency (optional)"><input className={fieldClass} value={form.dependency} onChange={set('dependency')} placeholder="e.g. ERMS / payroll data" /></Field>
+        </div>
+        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-hairline bg-[#FAFAFA] px-5 py-3">
+          <button
+            type="button"
+            onClick={() => (confirmDelete ? onDelete() : setConfirmDelete(true))}
+            className={`rounded-full px-3 py-1.5 text-xs font-medium ${confirmDelete ? 'bg-[#C4384A] text-white' : 'text-[#C4384A] hover:bg-[#C4384A]/10'}`}
+          >
+            {confirmDelete ? 'Click again to remove' : 'Remove card'}
+          </button>
+          <div className="flex gap-2">
+            <button type="button" onClick={onCancel} className="rounded-full border border-hairline bg-white px-4 py-1.5 text-sm font-medium text-ink hover:bg-[#FAFAFA]">Cancel</button>
+            <button type="submit" disabled={!canSave} className="rounded-full bg-accent px-4 py-1.5 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50">Save</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+export function RoadmapBoard({ isEditor = false }: { isEditor?: boolean }) {
   const [laneFilter, setLaneFilter] = useState<string>('all');
-  const lanes = laneFilter === 'all' ? LANES : LANES.filter((l) => l.id === laneFilter);
+  const [allLanes, setAllLanes] = useState<Lane[]>(LANES);
+  const [editing, setEditing] = useState<EditTarget | null>(null);
+  const [saveState, setSaveState] = useState<SaveState>('idle');
+  const lanes = laneFilter === 'all' ? allLanes : allLanes.filter((l) => l.id === laneFilter);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/roadmap')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => { if (!cancelled && Array.isArray(data?.items)) setAllLanes(fromRows(data.items)); })
+      .catch(() => { /* keep the defaults */ });
+    return () => { cancelled = true; };
+  }, []);
+
+  const persist = useCallback(async (next: Lane[], previous: Lane[]) => {
+    setAllLanes(next);
+    setSaveState('saving');
+    try {
+      const res = await fetch('/api/roadmap', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ items: flatten(next) }),
+      });
+      if (!res.ok) throw new Error('Save failed');
+      setSaveState('saved');
+    } catch {
+      setAllLanes(previous);
+      setSaveState('error');
+    }
+  }, []);
+
+  const editingItem = editing ? allLanes.find((l) => l.id === editing.laneId)?.[editing.horizon][editing.index] : undefined;
+
+  const applyEdit = (updated: RoadmapItem | null, toHorizon?: HorizonKey) => {
+    if (!editing) return;
+    const { laneId, horizon, index } = editing;
+    const previous = allLanes;
+    const next = allLanes.map((lane) => {
+      if (lane.id !== laneId) return lane;
+      const copy: Lane = { ...lane, now: [...lane.now], next: [...lane.next], later: [...lane.later] };
+      if (updated && toHorizon === horizon) {
+        copy[horizon][index] = updated;
+      } else {
+        copy[horizon].splice(index, 1);
+        if (updated && toHorizon) copy[toHorizon].push(updated);
+      }
+      return copy;
+    });
+    setEditing(null);
+    void persist(next, previous);
+  };
 
   return (
     <div className="space-y-5">
@@ -157,9 +345,17 @@ export function RoadmapBoard() {
         <div>
           <h2 className="text-xl font-semibold tracking-tight text-ink">AI Labs Roadmap</h2>
           <p className="mt-1 text-sm text-ink-secondary">What we are delivering now, what comes next, and where we are heading. As of {ROADMAP_AS_OF}.</p>
+          {isEditor && (
+            <p className="mt-1 flex items-center gap-1.5 text-xs text-ink-tertiary" aria-live="polite">
+              {saveState === 'saving' && <><Loader2 className="h-3 w-3 animate-spin" /> Saving…</>}
+              {saveState === 'saved' && 'All changes saved.'}
+              {saveState === 'error' && <span className="text-[#C4384A]">Couldn&apos;t save. Your last change was undone; please try again.</span>}
+              {saveState === 'idle' && 'Use the pencil on any card to edit it.'}
+            </p>
+          )}
         </div>
         <div className="flex flex-wrap gap-1.5">
-          {[{ id: 'all', name: 'All areas' }, ...LANES].map((l) => (
+          {[{ id: 'all', name: 'All areas' }, ...allLanes].map((l) => (
             <button
               key={l.id}
               type="button"
@@ -216,7 +412,13 @@ export function RoadmapBoard() {
                     <span className="h-1.5 w-1.5 rounded-full" style={{ background: h.color }} />
                     {h.label} · {h.range}
                   </div>
-                  {items.length ? items.map((item) => <RoadmapCard key={item.title} item={item} />) : <p className="px-1 text-xs italic text-ink-tertiary">Nothing planned yet</p>}
+                  {items.length ? items.map((item, i) => (
+                    <RoadmapCard
+                      key={`${item.title}-${i}`}
+                      item={item}
+                      onEdit={isEditor ? () => setEditing({ laneId: lane.id, horizon: h.key, index: i }) : undefined}
+                    />
+                  )) : <p className="px-1 text-xs italic text-ink-tertiary">Nothing planned yet</p>}
                 </div>
               );
             })}
@@ -235,6 +437,16 @@ export function RoadmapBoard() {
           ))}
         </div>
       </div>
+
+      {editing && editingItem && (
+        <CardEditor
+          item={editingItem}
+          horizon={editing.horizon}
+          onCancel={() => setEditing(null)}
+          onSave={(item, h) => applyEdit(item, h)}
+          onDelete={() => applyEdit(null)}
+        />
+      )}
 
       <p className="text-xs text-ink-tertiary">Now items are committed and in flight. Next and Later items are directional and are re-prioritised each quarter with the AI SteerCo. Dashed cards are options we can take on.</p>
     </div>
