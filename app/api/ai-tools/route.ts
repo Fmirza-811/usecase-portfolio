@@ -4,14 +4,15 @@ import { NextResponse } from 'next/server';
 import { GoogleSpreadsheet } from 'google-spreadsheet';
 import { JWT } from 'google-auth-library';
 
-// The AI tool tracker lives in a tab of the same Google Sheet as the use cases.
-// Any tab whose name starts with "AI Tool" is used (e.g. "AI Tools" or
-// "AI Tool Tracker"). The header row is the first row with at least two filled
-// cells, so a title row above the table is fine. Columns are returned as-is and
+// The AI tool tracker (AI Tool Tracker_Org.xlsx) is imported into the same
+// Google Sheet as the use cases. Its per-person data is in the "Access Log" tab;
+// a tab whose name starts with "AI Tool" is used instead if there is one. The
+// header row is the first row with at least two filled cells, so the title and
+// guidance rows above the table are skipped. Columns are returned as-is and
 // interpreted by app/ai-tools/ai-tools-dashboard.tsx.
 
 const SPREADSHEET_ID = '1YAzLS4CJ2bF6L1WLcYRTofEmmYZD3LraRvDjnTEsyLg';
-const TAB_PATTERN = /^ai\s*tool/i;
+const TAB_PATTERNS = [/^ai\s*tool/i, /^access\s*log$/i];
 
 function getJWT() {
   const privateKey = process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n');
@@ -24,7 +25,7 @@ export async function GET() {
   try {
     const doc = new GoogleSpreadsheet(SPREADSHEET_ID, getJWT());
     await doc.loadInfo();
-    const sheet = doc.sheetsByIndex.find((s) => TAB_PATTERN.test(s.title.trim()));
+    const sheet = TAB_PATTERNS.map((p) => doc.sheetsByIndex.find((s) => p.test(s.title.trim()))).find(Boolean);
     if (!sheet) return NextResponse.json({ sheet: null, headers: [], rows: [] });
 
     const values: string[][] = (await sheet.getCellsInRange(`A1:${sheet.lastColumnLetter}${sheet.rowCount}`)) ?? [];
