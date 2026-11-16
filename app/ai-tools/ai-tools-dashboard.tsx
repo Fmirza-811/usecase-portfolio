@@ -371,6 +371,36 @@ export function AiToolsDashboard() {
   const monthly = costOfRows(activeRows);
   const activePeople = cols.user !== undefined ? new Set(activeRows.map((r) => r[cols.user!].toLowerCase())).size : activeRows.length;
   const approved = billable.filter((r) => !isActive(r));
+
+  // Licence year: the 12 months from the month the first licence was activated
+  // (earliest Access Month in the whole log, so filters don't move it). Each
+  // Active or Revoked licence is costed for the months it falls inside the year:
+  // from its Access Month (or the start of the year) up to the month before its
+  // Revoked Month, or to the end of the year if still active. Active licences
+  // without an Access Month are costed for the whole year.
+  const parseCol = (r: string[], c: number | undefined) => (c === undefined ? undefined : parseMonth(r[c]));
+  const wasActivated = (r: string[]) => ['active', 'revoked'].includes(statusOf(r).toLowerCase()) || !!parseCol(r, cols.revoked);
+  const yearStart = allRows.filter(wasActivated).map((r) => parseCol(r, cols.started)).filter((m): m is string => !!m).sort()[0];
+  const addMonths = (ym: string, n: number) => {
+    const total = Number(ym.slice(0, 4)) * 12 + Number(ym.slice(5, 7)) - 1 + n;
+    return `${Math.floor(total / 12)}-${String((total % 12) + 1).padStart(2, '0')}`;
+  };
+  const monthsBetween = (from: string, to: string) => (Number(to.slice(0, 4)) - Number(from.slice(0, 4))) * 12 + Number(to.slice(5, 7)) - Number(from.slice(5, 7));
+  const yearEnd = yearStart ? addMonths(yearStart, 12) : undefined; // exclusive
+  const now = new Date();
+  const thisMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  // Cost of the given rows for the licence-year months before `until` (exclusive).
+  const yearCost = (until: string) => {
+    if (!yearStart || !yearEnd) return 0;
+    return rows.filter(wasActivated).reduce((total, r) => {
+      const start = [parseCol(r, cols.started) ?? yearStart, yearStart].sort()[1];
+      const end = [parseCol(r, cols.revoked) ?? yearEnd, yearEnd, until].sort()[0];
+      return total + costOf(r) * Math.max(0, monthsBetween(start, end));
+    }, 0);
+  };
+  const annual = yearEnd ? yearCost(yearEnd) : 0;
+  const spentSoFar = yearEnd ? yearCost(addMonths(thisMonth, 1)) : 0;
+  const yearLabel = yearStart && yearEnd ? `${formatMonth(yearStart)} – ${formatMonth(addMonths(yearEnd, -1))}` : 'No Access Months yet';
   const requested = rows.filter((r) => statusOf(r).toLowerCase() === 'requested');
 
   const toolColor = (tool: string) => TOOL_COLORS[toolOrder.indexOf(tool)] ?? OTHER_COLOR;
@@ -423,7 +453,11 @@ export function AiToolsDashboard() {
           <>
             <div className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-hairline bg-hairline md:grid-cols-3 xl:grid-cols-5">
               <Stat value={formatUsd(monthly)} label="Monthly cost" detail="Active licences, USD" />
-              <Stat value={formatUsd(monthly * 12)} label="Annualised cost" detail="Monthly × 12" />
+              <Stat
+                value={formatUsd(annual)}
+                label="Annual cost"
+                detail={yearStart ? `${yearLabel} · ${formatUsd(spentSoFar)} to date` : yearLabel}
+              />
               <Stat value={formatNumber(activeRows.length)} label="Active licences" detail={`${formatNumber(activePeople)} ${activePeople === 1 ? 'person' : 'people'}`} tone="text-[#22A55C]" />
               <Stat
                 value={formatNumber(approved.length)}
