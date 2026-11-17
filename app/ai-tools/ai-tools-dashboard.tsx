@@ -435,7 +435,22 @@ export function AiToolsDashboard() {
       <div className="mx-auto max-w-7xl space-y-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <Image src="/transcend-logo.png" alt="Transcend AI Labs" width={381} height={134} priority className="h-7 w-auto" />
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            {aiLabsCount > 0 && (
+              <div className="relative">
+                <select
+                  value={aiLabsView}
+                  onChange={(e) => { setAiLabsView(e.target.value as typeof aiLabsView); setDeptFilter('All'); }}
+                  aria-label="Show or hide AI Labs"
+                  className="h-10 appearance-none rounded-full border border-accent bg-accent/10 pl-4 pr-10 text-sm font-medium text-accent-deep outline-none transition hover:bg-accent/15 focus:ring-2 focus:ring-accent/30"
+                >
+                  <option value="without">Without AI Labs</option>
+                  <option value="with">With AI Labs</option>
+                  <option value="only">AI Labs only</option>
+                </select>
+                <ChevronDown className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-accent-deep" />
+              </div>
+            )}
             <Link href="/" className="inline-flex h-10 items-center gap-2 rounded-full border border-hairline bg-white px-4 text-sm font-medium text-ink hover:bg-[#FAFAFA]">
               <ArrowLeft className="h-4 w-4" /> Use cases
             </Link>
@@ -508,17 +523,6 @@ export function AiToolsDashboard() {
                   <FilterSelect value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} aria-label="Filter by status">
                     <option value="All">All statuses</option>
                     {statusOptions.map((o) => <option key={o} value={o}>{o}</option>)}
-                  </FilterSelect>
-                )}
-                {aiLabsCount > 0 && (
-                  <FilterSelect
-                    value={aiLabsView}
-                    onChange={(e) => { setAiLabsView(e.target.value as typeof aiLabsView); setDeptFilter('All'); }}
-                    aria-label="Show or hide AI Labs"
-                  >
-                    <option value="without">Without AI Labs</option>
-                    <option value="with">With AI Labs</option>
-                    <option value="only">AI Labs only</option>
                   </FilterSelect>
                 )}
                 {filtersActive && (
