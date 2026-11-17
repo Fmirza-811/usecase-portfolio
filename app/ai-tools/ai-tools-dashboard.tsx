@@ -287,7 +287,7 @@ export function AiToolsDashboard() {
   const [toolFilter, setToolFilter] = useState('All');
   const [deptFilter, setDeptFilter] = useState('All');
   const [statusFilter, setStatusFilter] = useState('All');
-  const [includeAiLabs, setIncludeAiLabs] = useState(false);
+  const [aiLabsView, setAiLabsView] = useState<'without' | 'with' | 'only'>('without');
   const [sort, setSort] = useState<{ col: number; dir: 'asc' | 'desc' } | null>(null);
 
   const load = useCallback(async () => {
@@ -314,11 +314,14 @@ export function AiToolsDashboard() {
     [data, cols],
   );
   // AI Labs' own licences are kept apart from the rest of the organisation:
-  // hidden by default, shown with the "Include AI Labs" toggle. A row belongs
+  // hidden by default; the AI Labs dropdown adds them in or shows them alone. A row belongs
   // to AI Labs when its department is "AI Labs" (or "AI Lab", any case).
   const isAiLabs = useCallback((r: string[]) => cols.department !== undefined && AI_LABS.test(r[cols.department]), [cols]);
   const aiLabsCount = useMemo(() => logRows.filter(isAiLabs).length, [logRows, isAiLabs]);
-  const allRows = useMemo(() => (includeAiLabs ? logRows : logRows.filter((r) => !isAiLabs(r))), [logRows, includeAiLabs, isAiLabs]);
+  const allRows = useMemo(
+    () => (aiLabsView === 'with' ? logRows : logRows.filter((r) => isAiLabs(r) === (aiLabsView === 'only'))),
+    [logRows, aiLabsView, isAiLabs],
+  );
   // Columns that are empty in every row (e.g. an unused Plan column) are left out of the table.
   const visibleCols = useMemo(() => headers.map((_, i) => i).filter((i) => allRows.some((r) => r[i])), [headers, allRows]);
 
@@ -508,21 +511,15 @@ export function AiToolsDashboard() {
                   </FilterSelect>
                 )}
                 {aiLabsCount > 0 && (
-                  <button
-                    type="button"
-                    role="switch"
-                    aria-checked={includeAiLabs}
-                    onClick={() => {
-                      if (includeAiLabs && AI_LABS.test(deptFilter)) setDeptFilter('All');
-                      setIncludeAiLabs(!includeAiLabs);
-                    }}
-                    className={`inline-flex h-11 shrink-0 items-center gap-2 rounded-full border px-4 text-sm transition ${includeAiLabs ? 'border-accent bg-accent/10 text-accent-deep' : 'border-hairline bg-white text-ink-secondary hover:text-ink'}`}
+                  <FilterSelect
+                    value={aiLabsView}
+                    onChange={(e) => { setAiLabsView(e.target.value as typeof aiLabsView); setDeptFilter('All'); }}
+                    aria-label="Show or hide AI Labs"
                   >
-                    <span className={`relative h-4 w-7 rounded-full transition ${includeAiLabs ? 'bg-accent' : 'bg-hairline'}`}>
-                      <span className={`absolute top-0.5 h-3 w-3 rounded-full bg-white transition-all ${includeAiLabs ? 'left-3.5' : 'left-0.5'}`} />
-                    </span>
-                    Include AI Labs ({aiLabsCount})
-                  </button>
+                    <option value="without">Without AI Labs</option>
+                    <option value="with">With AI Labs</option>
+                    <option value="only">AI Labs only</option>
+                  </FilterSelect>
                 )}
                 {filtersActive && (
                   <button type="button" onClick={clearFilters} className="h-11 shrink-0 rounded-full px-4 text-sm text-ink-secondary hover:text-ink">Clear</button>
