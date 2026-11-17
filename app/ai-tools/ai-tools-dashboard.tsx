@@ -94,6 +94,8 @@ const STATUS_COLORS: Record<string, string> = {
   revoked: '#A1A1A6',
   rejected: '#C4384A',
 };
+const AI_LABS = /\bai\s*labs?\b/i;
+
 const statusColor = (status: string) => STATUS_COLORS[status.toLowerCase()] ?? '#A1A1A6';
 
 // Tool colours, assigned in a fixed order by how many rows each tool has in the
@@ -285,6 +287,7 @@ export function AiToolsDashboard() {
   const [toolFilter, setToolFilter] = useState('All');
   const [deptFilter, setDeptFilter] = useState('All');
   const [statusFilter, setStatusFilter] = useState('All');
+  const [includeAiLabs, setIncludeAiLabs] = useState(false);
   const [sort, setSort] = useState<{ col: number; dir: 'asc' | 'desc' } | null>(null);
 
   const load = useCallback(async () => {
@@ -306,10 +309,16 @@ export function AiToolsDashboard() {
   const headers = useMemo(() => data?.headers ?? [], [data]);
   const cols = useMemo(() => detectColumns(headers), [headers]);
   // Rows without a name or a tool are blank template rows (the # column is pre-filled).
-  const allRows = useMemo(
+  const logRows = useMemo(
     () => (data?.rows ?? []).filter((r) => (cols.user !== undefined && r[cols.user]) || (cols.tool !== undefined && r[cols.tool])),
     [data, cols],
   );
+  // AI Labs' own licences are kept apart from the rest of the organisation:
+  // hidden by default, shown with the "Include AI Labs" toggle. A row belongs
+  // to AI Labs when its department is "AI Labs" (or "AI Lab", any case).
+  const isAiLabs = useCallback((r: string[]) => cols.department !== undefined && AI_LABS.test(r[cols.department]), [cols]);
+  const aiLabsCount = useMemo(() => logRows.filter(isAiLabs).length, [logRows, isAiLabs]);
+  const allRows = useMemo(() => (includeAiLabs ? logRows : logRows.filter((r) => !isAiLabs(r))), [logRows, includeAiLabs, isAiLabs]);
   // Columns that are empty in every row (e.g. an unused Plan column) are left out of the table.
   const visibleCols = useMemo(() => headers.map((_, i) => i).filter((i) => allRows.some((r) => r[i])), [headers, allRows]);
 
@@ -323,8 +332,8 @@ export function AiToolsDashboard() {
 
   // Tools ordered by row count across the whole log; fixes each tool's colour.
   const toolOrder = useMemo(
-    () => (cols.tool === undefined ? [] : [...sum(allRows, cols.tool, () => 1)].sort((a, b) => b[1] - a[1]).map(([t]) => t)),
-    [allRows, cols],
+    () => (cols.tool === undefined ? [] : [...sum(logRows, cols.tool, () => 1)].sort((a, b) => b[1] - a[1]).map(([t]) => t)),
+    [logRows, cols],
   );
 
   const [toolOptions, deptOptions, statusOptions] = useMemo(() => {
@@ -373,7 +382,8 @@ export function AiToolsDashboard() {
   const approved = billable.filter((r) => !isActive(r));
 
   // Licence year: the 12 months from the month the first licence was activated
-  // (earliest Access Month in the whole log, so filters don't move it). Each
+  // (earliest Access Month in the log, AI Labs included only when shown; the
+  // other filters don't move it). Each
   // Active or Revoked licence is costed for the months it falls inside the year:
   // from its Access Month (or the start of the year) up to the month before its
   // Revoked Month, or to the end of the year if still active. Active licences
@@ -496,6 +506,23 @@ export function AiToolsDashboard() {
                     <option value="All">All statuses</option>
                     {statusOptions.map((o) => <option key={o} value={o}>{o}</option>)}
                   </FilterSelect>
+                )}
+                {aiLabsCount > 0 && (
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={includeAiLabs}
+                    onClick={() => {
+                      if (includeAiLabs && AI_LABS.test(deptFilter)) setDeptFilter('All');
+                      setIncludeAiLabs(!includeAiLabs);
+                    }}
+                    className={`inline-flex h-11 shrink-0 items-center gap-2 rounded-full border px-4 text-sm transition ${includeAiLabs ? 'border-accent bg-accent/10 text-accent-deep' : 'border-hairline bg-white text-ink-secondary hover:text-ink'}`}
+                  >
+                    <span className={`relative h-4 w-7 rounded-full transition ${includeAiLabs ? 'bg-accent' : 'bg-hairline'}`}>
+                      <span className={`absolute top-0.5 h-3 w-3 rounded-full bg-white transition-all ${includeAiLabs ? 'left-3.5' : 'left-0.5'}`} />
+                    </span>
+                    Include AI Labs ({aiLabsCount})
+                  </button>
                 )}
                 {filtersActive && (
                   <button type="button" onClick={clearFilters} className="h-11 shrink-0 rounded-full px-4 text-sm text-ink-secondary hover:text-ink">Clear</button>
