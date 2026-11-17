@@ -91,6 +91,7 @@ const STATUS_COLORS: Record<string, string> = {
   active: '#22A55C',
   approved: '#118BA1',
   requested: '#D98A00',
+  'invite sent': '#7A5AF8',
   revoked: '#A1A1A6',
   rejected: '#C4384A',
 };
@@ -415,6 +416,7 @@ export function AiToolsDashboard() {
   const spentSoFar = yearEnd ? yearCost(addMonths(thisMonth, 1)) : 0;
   const yearLabel = yearStart && yearEnd ? `${formatMonth(yearStart)} – ${formatMonth(addMonths(yearEnd, -1))}` : 'No Access Months yet';
   const requested = rows.filter((r) => statusOf(r).toLowerCase() === 'requested');
+  const invited = rows.filter((r) => /^invite/i.test(statusOf(r).trim()));
 
   const toolColor = (tool: string) => TOOL_COLORS[toolOrder.indexOf(tool)] ?? OTHER_COLOR;
   const toolSlices = (subset: string[][], valueOf: (r: string[]) => number): Slice[] => {
@@ -479,7 +481,7 @@ export function AiToolsDashboard() {
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-hairline bg-hairline md:grid-cols-3 xl:grid-cols-5">
+            <div className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-hairline bg-hairline md:grid-cols-3 xl:grid-cols-6">
               <Stat value={formatUsd(monthly)} label="Monthly cost" detail="Active licences, USD" />
               <Stat
                 value={formatUsd(annual)}
@@ -498,6 +500,12 @@ export function AiToolsDashboard() {
                 label="Requested"
                 detail={requested.length ? `Awaiting approval · +${formatUsd(costOfRows(requested))}/month` : 'None open'}
                 tone={requested.length ? 'text-[#D98A00]' : 'text-ink-tertiary'}
+              />
+              <Stat
+                value={formatNumber(invited.length)}
+                label="Invite sent"
+                detail={invited.length ? `Awaiting acceptance · +${formatUsd(costOfRows(invited))}/month` : 'None pending'}
+                tone={invited.length ? 'text-[#7A5AF8]' : 'text-ink-tertiary'}
               />
             </div>
 
